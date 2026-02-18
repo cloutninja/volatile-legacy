@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <title>Grid Game Baseline</title>
+  <style>
+    html,body{margin:0;height:100%;background:#06130b;color:#eafff3;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+    #game{position:fixed;inset:0;width:100vw;height:100vh;display:block;touch-action:none;background:#06130b}
+    #status{
+      position:fixed;left:10px;right:10px;top:10px;z-index:99999;
+      padding:8px 10px;border-radius:12px;background:rgba(0,0,0,.6);
+      border:1px solid rgba(255,255,255,.2);font-weight:900
+    }
+    #err{
+      position:fixed;left:10px;right:10px;bottom:10px;z-index:99999;
+      padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.78);
+      border:1px solid rgba(255,255,255,.2);display:none;white-space:pre-wrap;font-size:12px
+    }
+    #hud{
+      position:fixed;left:10px;top:54px;z-index:9999;
+      background:rgba(6,26,14,.72);border:1px solid rgba(234,255,243,.16);
+      border-radius:14px;padding:10px 12px;min-width:240px
+    }
+    .row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+    .label{font-size:12px;color:#b7f7da;font-weight:900}
+    .icons{display:flex;gap:4px;align-items:center}
+    .heart,.shield{width:18px;height:18px;display:inline-grid;place-items:center}
+    .heart{filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}
+    .shield{filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}
+    .bar{width:180px;height:10px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.14)}
+    .fill{height:100%;width:0%}
+    #energyFill{background:rgba(250,204,21,.95)}
+    #tempWrap{position:relative}
+    #tempMid{position:absolute;left:50%;top:0;bottom:0;width:2px;background:rgba(255,255,255,.2)}
+    #tempFill{position:absolute;top:0;bottom:0;left:50%;width:0%;background:#fff}
+
+    #worldPill{
+      position:fixed;right:10px;top:10px;z-index:9999;
+      background:rgba(6,26,14,.72);border:1px solid rgba(234,255,243,.16);
+      border-radius:999px;padding:10px 12px;display:flex;gap:10px;align-items:center;font-weight:900;color:#b7f7da
+    }
+    #worldPill strong{color:#eafff3}
+    #menuBtn{width:44px;height:44px;border-radius:14px;border:1px solid rgba(234,255,243,.16);background:rgba(6,26,14,.85);color:#eafff3;font-weight:900}
+
+    #exitBtn{
+      position:fixed;left:10px;top:168px;z-index:9999;display:none;
+      padding:10px 14px;border-radius:999px;border:1px solid rgba(251,113,133,.35);
+      background:rgba(251,113,133,.14);color:#ffe4e6;font-weight:950
+    }
+
+    #attacks{position:fixed;left:14px;bottom:14px;z-index:9999;display:flex;gap:10px}
+    .btn{
+      width:74px;height:74px;border-radius:18px;border:1px solid rgba(234,255,243,.16);
+      background:rgba(6,26,14,.72);color:#eafff3;font-weight:950;
+      display:grid;place-items:center;user-select:none
+    }
+    .btn small{display:block;font-size:11px;color:#b7f7da;margin-top:2px}
+    .btn.disabled{opacity:.35}
+
+    #joyArea{position:fixed;right:14px;bottom:14px;width:160px;height:160px;z-index:9999;touch-action:none}
+    #joyBase{position:absolute;inset:0;border-radius:999px;background:rgba(6,26,14,.52);border:1px solid rgba(234,255,243,.16)}
+    #joyStick{position:absolute;left:50%;top:50%;width:72px;height:72px;margin-left:-36px;margin-top:-36px;border-radius:999px;
+      background:rgba(52,211,153,.18);border:1px solid rgba(52,211,153,.50);display:grid;place-items:center;color:rgba(52,211,153,.95);font-weight:950}
+    #joyHint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:11px;color:rgba(167,243,208,.9);width:120px;text-align:center;pointer-events:none}
+
+    /* menu + confirm (minimal) */
+    #overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:20000}
+    #overlay.open{display:block}
+    #menuCard{position:fixed;right:10px;top:64px;width:min(92vw,380px);background:rgba(6,26,14,.88);
+      border:1px solid rgba(234,255,243,.16);border-radius:16px;padding:12px;color:#b7f7da}
+    #menuCard h3{margin:0 0 10px 0;color:#eafff3}
+    .mBtn{width:100%;padding:12px;border-radius:14px;border:1px solid rgba(234,255,243,.16);background:rgba(6,26,14,.85);color:#eafff3;font-weight:950;margin-top:10px}
+
+    #confirm{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;z-index:30000;align-items:center;justify-content:center;padding:18px}
+    #confirm.open{display:flex}
+    #confirmCard{width:min(92vw,420px);background:rgba(6,26,14,.92);border:1px solid rgba(234,255,243,.16);border-radius:16px;overflow:hidden}
+    #confirmTop{padding:12px;border-bottom:1px solid rgba(234,255,243,.16);font-weight:950}
+    #confirmMsg{padding:12px;color:#b7f7da;font-weight:900}
+    #confirmBtns{display:flex;gap:10px;padding:12px}
+    .cbtn{flex:1;padding:12px;border-radius:14px;border:1px solid rgba(234,255,243,.16);background:rgba(6,26,14,.85);color:#eafff3;font-weight:950}
+    .cbtn.ok{border-color:rgba(52,211,153,.45);background:rgba(52,211,153,.16)}
+    .cbtn.cancel{border-color:rgba(251,113,133,.35);background:rgba(251,113,133,.14);color:#ffe4e6}
+    .cbtn:disabled{opacity:.35}
+  </style>
+</head>
+<body>
+  <div id="status">LOADING… (if this never changes, JS is not running)</div>
+  <div id="err"></div>
+
+  <canvas id="game"></canvas>
+
+  <div id="hud">
+    <div class="row"><div class="label">HP</div><div class="icons" id="hearts"></div></div>
+    <div class="row"><div class="label">DEF</div><div class="icons" id="shields"></div></div>
+    <div class="row"><div class="label">ENERGY</div><div class="bar"><div class="fill" id="energyFill"></div></div></div>
+    <div class="row">
+      <div class="bar" id="tempWrap">
+        <div id="tempMid"></div>
+        <div class="fill" id="tempFill"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="worldPill">
+    <span>World:</span><strong id="worldText">mainland</strong>
+    <span>•</span>
+    <span>Pos:</span><strong id="posText">0.0, 0.0</strong>
+    <button id="menuBtn">☰</button>
+  </div>
+
+  <button id="exitBtn">Exit</button>
+
+  <div id="attacks">
+    <div class="btn" id="atk1">A<small>Attack 1</small></div>
+    <div class="btn" id="atk2">B<small>Attack 2</small></div>
+    <div class="btn" id="bedBtn">🛏️<small>Rest</small></div>
+  </div>
+
+  <div id="joyArea">
+    <div id="joyBase"></div>
+    <div id="joyHint">Drag to move</div>
+    <div id="joyStick">◉</div>
+  </div>
+
+  <div id="overlay">
+    <div id="menuCard">
+      <h3>Menu</h3>
+      <div>Settings / Stats / Equipment / Mastery / Inventory (placeholders)</div>
+      <button class="mBtn" id="refreshBtn">Refresh Browser</button>
+      <button class="mBtn" id="closeMenuBtn">Close</button>
+    </div>
+  </div>
+
+  <div id="confirm">
+    <div id="confirmCard">
+      <div id="confirmTop">Confirm</div>
+      <div id="confirmMsg"></div>
+      <div id="confirmBtns">
+        <button class="cbtn ok" id="confirmOk">OK</button>
+        <button class="cbtn cancel" id="confirmCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // Global error display (works if JS runs; parse errors still stop everything)
+  (function(){
+    const err = document.getElementById('err');
+    function show(e){
+      err.style.display='block';
+      err.textContent = 'ERROR:\\n' + (e && (e.stack || e.message) ? (e.stack || e.message) : String(e));
+    }
+    window.addEventListener('error', ev => show(ev.error || ev.message || ev), true);
+    window.addEventListener('unhandledrejection', ev => show(ev.reason || ev), true);
+  })();
+  </script>
+  <script>
+(() => {
+  const status = document.getElementById('status');
+  status.textContent = 'RUNNING ✅';
+
+  // ===== Core constants =====
+  const WORLD = 30;
+  const VIEW = 10;
+  const PLAYER_SCALE = 0.80;
+
+  const maxHP = 20; let hp = 20;
+  const maxShields = 5; let shields = 0;
+  const maxEnergy = 10; let energy = 10; // no regen
+  const defaultTemp = 7; let temp = defaultTemp;
+
+  const ATTACK_RADIUS = 2; // tiles
+  const SWING_COST = 1;
+  const SWING_DAMAGE = 5;
+
+  // Worlds
+  const W_MAIN = "mainland";
+  const W1 = "OverW1";
+  const W2 = "OverW2";
+  const W3 = "OverW3";
+  const W_BANK = "Bank";
+
+  // Spawn: 2 tiles up from bottom center
+  const spawnTile = { x: Math.floor(WORLD/2), y: WORLD - 1 - 2 };
+  const spawn = { x: spawnTile.x + 0.5, y: spawnTile.y + 0.5 };
+
+  // Mainland portals
+  const overW1Tile = { x: spawnTile.x - 3, y: spawnTile.y - 6 };
+  const overW2Tile = { x: overW1Tile.x + 6, y: overW1Tile.y };
+  const overW3Tile = { x: overW1Tile.x, y: overW1Tile.y + 6 };
+
+  const overSpawn = { x: 29.5, y: 29.5 };
+  const bankSpawn = { x: 15.5, y: 27.5 };
+
+  // Shield station 6 above spawn, 1 available at a time
+  const shieldStationTile = { x: spawnTile.x, y: spawnTile.y - 6 };
+  let shieldStationAvailable = true;
+  let shieldRespawn = 0;
+  const SHIELD_RESPAWN_TIME = 30;
+
+  // Bank building tile
+  const bankTile = { x: spawnTile.x + 4, y: spawnTile.y - 3 };
+
+  // Jelly mob (OverW1/OverW3)
+  function makeJelly(){
+    return { x:13, y:13, w:4, h:4, hp:50, alive:true, affectedRange:2 };
+  }
+  let jelly = makeJelly();
+
+  // ===== DOM =====
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+
+  const worldText = document.getElementById('worldText');
+  const posText = document.getElementById('posText');
+
+  const heartsEl = document.getElementById('hearts');
+  const shieldsEl = document.getElementById('shields');
+  const energyFill = document.getElementById('energyFill');
+  const tempFill = document.getElementById('tempFill');
+
+  const atk1 = document.getElementById('atk1');
+  const atk2 = document.getElementById('atk2');
+  const bedBtn = document.getElementById('bedBtn');
+  const exitBtn = document.getElementById('exitBtn');
+
+  const overlay = document.getElementById('overlay');
+  const menuBtn = document.getElementById('menuBtn');
+  const closeMenuBtn = document.getElementById('closeMenuBtn');
+  const refreshBtn = document.getElementById('refreshBtn');
+
+  const confirmEl = document.getElementById('confirm');
+  const confirmMsgEl = document.getElementById('confirmMsg');
+  const confirmOk = document.getElementById('confirmOk');
+  const confirmCancel = document.getElementById('confirmCancel');
+
+  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+  function dist(ax,ay,bx,by){ return Math.hypot(ax-bx, ay-by); }
+  function tileCenter(t){ return { x:t.x+0.5, y:t.y+0.5 }; }
+  function distPointToRect(px, py, rx, ry, rw, rh){
+    const cx = clamp(px, rx, rx+rw);
+    const cy = clamp(py, ry, ry+rh);
+    return Math.hypot(px-cx, py-cy);
+  }
+
+  // ===== Canvas resize (FULLSCREEN) =====
+  function resize(){
+    const w = Math.floor(window.innerWidth);
+    const h = Math.floor(window.innerHeight);
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+  }
+  window.addEventListener('resize', resize, { passive:true });
+  resize();
+
+  function metrics(){
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const size = Math.min(w,h);
+    const tilePx = size / VIEW;
+    const viewPx = tilePx * VIEW;
+    const ox = (w - viewPx)/2;
+    const oy = (h - viewPx)/2;
+    return { w,h,size,tilePx,viewPx,ox,oy };
+  }
+
+  // ===== World state =====
+  let currentWorld = W_MAIN;
+  function setWorld(name){
+    currentWorld = name;
+    worldText.textContent = name;
+    exitBtn.style.display = (name === W_MAIN) ? 'none' : 'block';
+    if (name === W1 || name === W3) jelly = makeJelly();
+  }
+
+  // ===== Confirm =====
+  let confirmOpen = false;
+  let okFn = null, cancelFn = null;
+
+  function openConfirm(msg, ok, cancel, opts){
+    confirmOpen = true;
+    okFn = ok; cancelFn = cancel;
+    confirmMsgEl.textContent = msg;
+    confirmEl.classList.add('open');
+
+    const disable = opts && opts.disableButtons;
+    confirmOk.disabled = !!disable;
+    confirmCancel.disabled = !!disable;
+  }
+  function closeConfirm(){
+    confirmOpen = false;
+    okFn = null; cancelFn = null;
+    confirmEl.classList.remove('open');
+    confirmOk.disabled = false;
+    confirmCancel.disabled = false;
+  }
+
+  confirmOk.addEventListener('click', ()=>{ if(confirmOk.disabled) return; const f=okFn; closeConfirm(); f && f(); });
+  confirmCancel.addEventListener('click', ()=>{ if(confirmCancel.disabled) return; const f=cancelFn; closeConfirm(); f && f(); });
+  confirmEl.addEventListener('click', (e)=>{ if(e.target===confirmEl) closeConfirm(); });
+
+  // ===== Menu =====
+  menuBtn.addEventListener('click', ()=> overlay.classList.add('open'));
+  closeMenuBtn.addEventListener('click', ()=> overlay.classList.remove('open'));
+  overlay.addEventListener('click', (e)=>{ if(e.target===overlay) overlay.classList.remove('open'); });
+  refreshBtn.addEventListener('click', ()=> location.reload());
+
+  // ===== Player =====
+  const player = { x: spawn.x, y: spawn.y, speed: 6, vx:0, vy:0, fx:0, fy:-1 };
+
+  // ===== Joystick =====
+  const joyArea = document.getElementById('joyArea');
+  const joyStick = document.getElementById('joyStick');
+  const joyHint = document.getElementById('joyHint');
+  let joyActive=false, joyId=null, joyCenter={x:0,y:0}, joyVec={x:0,y:0};
+
+  function setStick(dx,dy){
+    const max=48;
+    const len=Math.hypot(dx,dy);
+    let nx=dx, ny=dy;
+    if(len>max){ nx=(dx/len)*max; ny=(dy/len)*max; }
+    joyStick.style.transform = `translate(${nx}px,${ny}px)`;
+    joyVec.x = nx/max; joyVec.y = ny/max;
+    joyHint.style.opacity = (Math.hypot(nx,ny)>8) ? 0 : 1;
+  }
+  function resetStick(){
+    joyStick.style.transform='translate(0px,0px)';
+    joyVec.x=0; joyVec.y=0; joyHint.style.opacity=1;
+  }
+
+  joyArea.addEventListener('pointerdown', (e)=>{
+    joyActive=true; joyId=e.pointerId;
+    const r=joyArea.getBoundingClientRect();
+    joyCenter.x=r.left+r.width/2;
+    joyCenter.y=r.top+r.height/2;
+    joyArea.setPointerCapture(joyId);
+    setStick(e.clientX-joyCenter.x, e.clientY-joyCenter.y);
+  });
+  joyArea.addEventListener('pointermove', (e)=>{ if(!joyActive||e.pointerId!==joyId) return; setStick(e.clientX-joyCenter.x, e.clientY-joyCenter.y); });
+  function joyEnd(e){ if(!joyActive||e.pointerId!==joyId) return; joyActive=false; joyId=null; resetStick(); }
+  joyArea.addEventListener('pointerup', joyEnd);
+  joyArea.addEventListener('pointercancel', joyEnd);
+
+  // ===== HUD =====
+  function updateHUD(){
+    heartsEl.innerHTML = '';
+    const full = Math.floor(hp/2);
+    const half = (hp%2)===1;
+    for(let i=0;i<10;i++){
+      const s=document.createElement('span');
+      s.className='heart';
+      if(i<full) s.textContent='❤';
+      else if(i===full && half) s.textContent='💔';
+      else s.textContent='♡';
+      heartsEl.appendChild(s);
+    }
+
+    shieldsEl.innerHTML='';
+    for(let i=0;i<maxShields;i++){
+      const s=document.createElement('span');
+      s.className='shield';
+      s.textContent = (i<shields) ? '🛡️' : '▫️';
+      shieldsEl.appendChild(s);
+    }
+
+    energyFill.style.width = `${(energy/maxEnergy)*100}%`;
+
+    const centered = temp/10; // -1..+1
+    const w = Math.abs(centered)*50;
+    if(temp>=0){ tempFill.style.left='50%'; tempFill.style.width = w+'%'; }
+    else { tempFill.style.left=(50-w)+'%'; tempFill.style.width = w+'%'; }
+    const tnorm = clamp((temp+10)/20,0,1);
+    const r = Math.round(40 + 215*tnorm);
+    const b = Math.round(255 - 215*tnorm);
+    tempFill.style.background = `rgb(${r},80,${b})`;
+  }
+  updateHUD();
+
+  // Bed
+  bedBtn.addEventListener('click', ()=>{
+    hp=maxHP; energy=maxEnergy; temp=defaultTemp; updateHUD();
+  });
+
+  // Exit
+  exitBtn.addEventListener('click', ()=>{
+    if(confirmOpen) return;
+    openConfirm("Exit this zone and return to mainland respawn?",
+      ()=>{ setWorld(W_MAIN); player.x=spawn.x; player.y=spawn.y; },
+      ()=>{}
+    );
+  });
+
+  // ===== Gameplay helpers =====
+  function tryCollectShield(){
+    if(currentWorld!==W_MAIN) return;
+    if(!shieldStationAvailable) return;
+    if(shields>=maxShields) return;
+
+    const ss=tileCenter(shieldStationTile);
+    if(dist(player.x,player.y,ss.x,ss.y)>2) return;
+
+    shields = Math.min(maxShields, shields+1);
+    shieldStationAvailable=false;
+    shieldRespawn=0;
+    updateHUD();
+  }
+
+  let bankPromptArmed=true;
+  function handleBank(){
+    if(currentWorld!==W_MAIN) return;
+    const b=tileCenter(bankTile);
+    const near = dist(player.x,player.y,b.x,b.y)<=2;
+
+    if(!near){ bankPromptArmed=true; return; }
+    if(!bankPromptArmed) return;
+    if(confirmOpen) return;
+
+    bankPromptArmed=false;
+    openConfirm("Enter Bank? Costs 1 energy.",
+      ()=>{
+        if(energy<1){
+          openConfirm("Not enough energy to enter the Bank.", ()=>{}, ()=>{});
+          return;
+        }
+        energy-=1; updateHUD();
+        setWorld(W_BANK);
+        player.x=bankSpawn.x; player.y=bankSpawn.y;
+      },
+      ()=>{}
+    );
+  }
+
+  function checkPortals(){
+    if(currentWorld!==W_MAIN) return;
+    const px=Math.floor(player.x), py=Math.floor(player.y);
+
+    if(!confirmOpen && px===overW1Tile.x && py===overW1Tile.y){
+      openConfirm("Enter OverW1?",
+        ()=>{ setWorld(W1); player.x=overSpawn.x; player.y=overSpawn.y; },
+        ()=>{ player.x=clamp(player.x+0.6,0.5,WORLD-0.5); }
+      );
+    }
+
+    if(!confirmOpen && px===overW2Tile.x && py===overW2Tile.y){
+      openConfirm(
+  "Enter OverW2? (Dev switches - disabled for now)",
+  () => {
+    // OK intentionally does nothing for now
+  },
+  () => {
+    // Cancel works and nudges you off the portal tile
+    player.x = clamp(player.x + 0.6, 0.5, WORLD - 0.5);
+  }
+);
+
+// Disable only OK, keep Cancel enabled
+confirmOk.disabled = true;
+confirmCancel.disabled = false;
+}
+
+    if(!confirmOpen && px===overW3Tile.x && py===overW3Tile.y){
+      openConfirm("Enter OverW3?",
+        ()=>{ setWorld(W3); player.x=overSpawn.x; player.y=overSpawn.y; },
+        ()=>{ player.x=clamp(player.x+0.6,0.5,WORLD-0.5); }
+      );
+    }
+  }
+
+  function canAttack(){
+    if(energy<SWING_COST) return false;
+
+    if(currentWorld===W_MAIN){
+      const b=tileCenter(bankTile);
+      const s=tileCenter(shieldStationTile);
+      return dist(player.x,player.y,b.x,b.y)<=2 || dist(player.x,player.y,s.x,s.y)<=2;
+    }
+    if(currentWorld===W1 || currentWorld===W3){
+      if(!jelly.alive) return false;
+      const d=distPointToRect(player.x,player.y,jelly.x,jelly.y,jelly.w,jelly.h);
+      return d<=jelly.affectedRange;
+    }
+    return false;
+  }
+
+  // simple swing animation
+  const swing = {active:false,t:0,dur:0.18};
+  function startAttack(){
+    if(!canAttack()) return;
+    energy-=SWING_COST; updateHUD();
+    swing.active=true; swing.t=0;
+
+    if(currentWorld===W1 || currentWorld===W3){
+      const d=distPointToRect(player.x,player.y,jelly.x,jelly.y,jelly.w,jelly.h);
+      if(d<=jelly.affectedRange){
+        jelly.hp-=SWING_DAMAGE;
+        if(jelly.hp<=0){ jelly.hp=0; jelly.alive=false; }
+      }
+    }
+  }
+
+  atk1.addEventListener('pointerdown',(e)=>{e.preventDefault(); startAttack();},{passive:false});
+  atk2.addEventListener('pointerdown',(e)=>{e.preventDefault(); startAttack();},{passive:false});
+
+  // ===== Update loop =====
+  let last=performance.now();
+  function update(dt){
+    if(overlay.classList.contains('open') || confirmOpen) return;
+
+    if(!shieldStationAvailable){
+      shieldRespawn += dt;
+      if(shieldRespawn >= SHIELD_RESPAWN_TIME){
+        shieldStationAvailable=true;
+        shieldRespawn=0;
+      }
+    }
+
+    // movement
+    const dead=0.08;
+    let jx=Math.abs(joyVec.x)<dead?0:joyVec.x;
+    let jy=Math.abs(joyVec.y)<dead?0:joyVec.y;
+    const mag=Math.hypot(jx,jy);
+    if(mag>1){ jx/=mag; jy/=mag; }
+
+    player.vx = jx*player.speed;
+    player.vy = jy*player.speed;
+    player.x = clamp(player.x + player.vx*dt, 0.5, WORLD-0.5);
+    player.y = clamp(player.y + player.vy*dt, 0.5, WORLD-0.5);
+
+    const vmag=Math.hypot(player.vx,player.vy);
+    if(vmag>0.05){ player.fx=player.vx/vmag; player.fy=player.vy/vmag; }
+
+    // swing progress
+   if(swing.active){
+      swing.t += dt/swing.dur;
+      if(swing.t>=1){ swing.t=1; swing.active=false; }
+    }
+
+    // button gating
+    const enabled=canAttack();
+    atk1.classList.toggle('disabled', !enabled);
+    atk2.classList.toggle('disabled', !enabled);
+
+    handleBank();
+    tryCollectShield();
+    checkPortals();
+
+    posText.textContent = `${player.x.toFixed(1)}, ${player.y.toFixed(1)}`;
+  }
+  function draw(){
+    const m=metrics();
+    ctx.clearRect(0,0,m.w,m.h);
+
+    // camera
+    const camX = clamp(player.x - VIEW/2, 0, WORLD - VIEW);
+    const camY = clamp(player.y - VIEW/2, 0, WORLD - VIEW);
+
+    const w2s = (wx,wy)=>({ x:(wx-camX)*m.tilePx, y:(wy-camY)*m.tilePx });
+
+    ctx.save();
+    ctx.translate(m.ox, m.oy);
+
+    // tiles
+    const startX=Math.floor(camX), startY=Math.floor(camY);
+    for(let ty=startY; ty<startY+VIEW; ty++){
+      for(let tx=startX; tx<startX+VIEW; tx++){
+        const s=w2s(tx,ty);
+        ctx.fillStyle="#1f7a3a";
+        ctx.fillRect(s.x,s.y,m.tilePx,m.tilePx);
+        ctx.strokeStyle="#000";
+        ctx.lineWidth=1;
+        ctx.strokeRect(s.x,s.y,m.tilePx,m.tilePx);
+      }
+    }
+
+    // bank tint proof
+    if(currentWorld===W_BANK){
+      ctx.fillStyle="rgba(234,179,8,.18)";
+      ctx.fillRect(0,0,m.viewPx,m.viewPx);
+    }
+
+    // mainland markers
+    if(currentWorld===W_MAIN){
+      drawTileTag(overW1Tile,"W1","rgba(96,165,250,.22)");
+      drawTileTag(overW2Tile,"W2","rgba(96,165,250,.22)");
+      drawTileTag(overW3Tile,"W3","rgba(96,165,250,.22)");
+      drawTileTag(bankTile,"B","rgba(234,179,8,.35)");
+
+      // shield station
+      const ss=w2s(shieldStationTile.x, shieldStationTile.y);
+      ctx.fillStyle = shieldStationAvailable ? "rgba(255,255,255,.06)" : "rgba(255,255,255,.02)";
+      ctx.fillRect(ss.x,ss.y,m.tilePx,m.tilePx);
+      ctx.strokeStyle="#000"; ctx.strokeRect(ss.x,ss.y,m.tilePx,m.tilePx);
+      ctx.globalAlpha = shieldStationAvailable ? 1 : 0.35;
+      ctx.font = `${Math.max(12,m.tilePx*0.60)}px system-ui`;
+      ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillStyle="rgba(234,255,243,.95)";
+      ctx.fillText("🛡️", ss.x+m.tilePx/2, ss.y+m.tilePx/2);
+      ctx.globalAlpha=1;
+    }
+
+    // jelly
+    if((currentWorld===W1 || currentWorld===W3) && jelly){
+      const s=w2s(jelly.x, jelly.y);
+      const w=jelly.w*m.tilePx, h=jelly.h*m.tilePx;
+      ctx.fillStyle = jelly.alive ? "rgba(59,130,246,.75)" : "rgba(59,130,246,.20)";
+      ctx.fillRect(s.x,s.y,w,h);
+      ctx.strokeStyle="#000"; ctx.lineWidth=2; ctx.strokeRect(s.x,s.y,w,h);
+      ctx.fillStyle="rgba(234,255,243,.95)";
+      ctx.font = `${Math.max(12,m.tilePx*0.34)}px system-ui`;
+      ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText(`Jelly ${jelly.hp}/50`, s.x+w/2, s.y+h/2);
+    }
+
+    // player (simple guaranteed visible)
+    const p=w2s(player.x, player.y);
+    const ps=m.tilePx*PLAYER_SCALE;
+    ctx.fillStyle="rgba(234,255,243,.92)";
+    ctx.fillRect(p.x-ps/2, p.y-ps/2, ps, ps);
+    ctx.strokeStyle="#000"; ctx.lineWidth=2;
+    ctx.strokeRect(p.x-ps/2, p.y-ps/2, ps, ps);
+
+    // swing arc
+    if(swing.active){
+      const base=Math.atan2(player.fy, player.fx);
+      const span=Math.PI*0.9;
+      const cur=(base-span/2) + span*swing.t;
+      const r=m.tilePx*1.25;
+      ctx.strokeStyle=`rgba(234,255,243,${(1-swing.t)*0.9})`;
+      ctx.lineWidth=Math.max(4,m.tilePx*0.18);
+      ctx.lineCap="round";
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,r,cur-span*0.25,cur);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+
+    function drawTileTag(t, tag, fill){
+      const s=w2s(t.x,t.y);
+      ctx.fillStyle=fill;
+      ctx.fillRect(s.x,s.y,m.tilePx,m.tilePx);
+      ctx.strokeStyle="#000"; ctx.lineWidth=1; ctx.strokeRect(s.x,s.y,m.tilePx,m.tilePx);
+      ctx.fillStyle="rgba(234,255,243,.95)";
+      ctx.font=`${Math.max(10,m.tilePx*0.34)}px system-ui`;
+      ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText(tag, s.x+m.tilePx/2, s.y+m.tilePx/2);
+    }
+  }
+
+  // init
+  setWorld(W_MAIN);
+  player.x=spawn.x; player.y=spawn.y;
+  posText.textContent = `${player.x.toFixed(1)}, ${player.y.toFixed(1)}`;
+  updateHUD();
+
+  function loop(t){
+    const dt=Math.min(0.05,(t-last)/1000);
+    last=t;
+    update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
