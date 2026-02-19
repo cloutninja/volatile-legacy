@@ -3,335 +3,1043 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-  <title>Grid Game Baseline</title>
+  <title>Volatile Legacy</title>
   <style>
-    html,body{margin:0;height:100%;background:#06130b;color:#eafff3;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+    :root{
+      --ui-bg: rgba(0,0,0,.20);
+      --ui-border: rgba(255,255,255,.18);
+      --ui-text: rgba(234,255,243,.95);
+      --ui-sub: rgba(183,247,218,.90);
+    }
+    html,body{margin:0;height:100%;background:#06130b;color:var(--ui-text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;overflow:hidden}
     #game{position:fixed;inset:0;width:100vw;height:100vh;display:block;touch-action:none;background:#06130b}
-    #status{
-      position:fixed;left:10px;right:10px;top:10px;z-index:99999;
-      padding:8px 10px;border-radius:12px;background:rgba(0,0,0,.6);
-      border:1px solid rgba(255,255,255,.2);font-weight:900
-    }
-    #err{
-      position:fixed;left:10px;right:10px;bottom:10px;z-index:99999;
-      padding:10px 12px;border-radius:12px;background:rgba(0,0,0,.78);
-      border:1px solid rgba(255,255,255,.2);display:none;white-space:pre-wrap;font-size:12px
-    }
+
+    /* HUD */
     #hud{
-      position:fixed;left:10px;top:54px;z-index:9999;
-      background:rgba(6,26,14,.72);border:1px solid rgba(234,255,243,.16);
-      border-radius:14px;padding:10px 12px;min-width:240px
+      position:fixed;left:10px;top:10px;z-index:9999;
+      background:var(--ui-bg);border:1px solid var(--ui-border);
+      border-radius:14px;padding:10px 12px;min-width:250px;backdrop-filter: blur(6px);
     }
     .row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
-    .label{font-size:12px;color:#b7f7da;font-weight:900}
+    .label{font-size:12px;color:var(--ui-sub);font-weight:900}
     .icons{display:flex;gap:4px;align-items:center}
     .heart,.shield{width:18px;height:18px;display:inline-grid;place-items:center}
-    .heart{filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}
-    .shield{filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}
-    .bar{width:180px;height:10px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.14)}
+    .bar{width:190px;height:10px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.14);position:relative}
     .fill{height:100%;width:0%}
     #energyFill{background:rgba(250,204,21,.95)}
-    #tempWrap{position:relative}
-    #tempMid{position:absolute;left:50%;top:0;bottom:0;width:2px;background:rgba(255,255,255,.2)}
+    #tempMid{position:absolute;left:50%;top:0;bottom:0;width:2px;background:rgba(255,255,255,.18)}
     #tempFill{position:absolute;top:0;bottom:0;left:50%;width:0%;background:#fff}
 
-    #worldPill{
-      position:fixed;right:10px;top:10px;z-index:9999;
-      background:rgba(6,26,14,.72);border:1px solid rgba(234,255,243,.16);
-      border-radius:999px;padding:10px 12px;display:flex;gap:10px;align-items:center;font-weight:900;color:#b7f7da
+    /* Top buttons */
+    #menuBtn,#connectBtn{
+      position:fixed;top:10px;z-index:10000;
+      height:48px;border-radius:14px;border:1px solid var(--ui-border);
+      background:var(--ui-bg);color:var(--ui-text);font-weight:950;backdrop-filter: blur(6px);
     }
-    #worldPill strong{color:#eafff3}
-    #menuBtn{width:44px;height:44px;border-radius:14px;border:1px solid rgba(234,255,243,.16);background:rgba(6,26,14,.85);color:#eafff3;font-weight:900}
+    #menuBtn{right:10px;width:48px}
+    #connectBtn{right:66px;padding:0 12px}
 
+    /* Exit button */
     #exitBtn{
-      position:fixed;left:10px;top:168px;z-index:9999;display:none;
+      position:fixed;left:10px;top:140px;z-index:10000;display:none;
       padding:10px 14px;border-radius:999px;border:1px solid rgba(251,113,133,.35);
-      background:rgba(251,113,133,.14);color:#ffe4e6;font-weight:950
+      background:rgba(251,113,133,.20);color:#ffe4e6;font-weight:950;backdrop-filter: blur(6px);
     }
 
-    #attacks{position:fixed;left:14px;bottom:14px;z-index:9999;display:flex;gap:10px}
+    /* Bottom-left buttons */
+    #buttons{position:fixed;left:14px;bottom:14px;z-index:10000;display:flex;gap:10px}
     .btn{
-      width:74px;height:74px;border-radius:18px;border:1px solid rgba(234,255,243,.16);
-      background:rgba(6,26,14,.72);color:#eafff3;font-weight:950;
-      display:grid;place-items:center;user-select:none
+      width:74px;height:74px;border:1px solid var(--ui-border);
+      background:var(--ui-bg);color:var(--ui-text);font-weight:950;
+      display:grid;place-items:center;user-select:none;backdrop-filter: blur(6px);
+      text-align:center; line-height:1.05;
     }
-    .btn small{display:block;font-size:11px;color:#b7f7da;margin-top:2px}
+    .btn.attack{border-radius:999px}
+    .btn.bed{border-radius:18px}
     .btn.disabled{opacity:.35}
+    .btn .slot{font-size:11px;opacity:.90;font-weight:950}
+    .btn .ico{font-size:22px;margin-top:2px}
+    .btn .name{font-size:11px;opacity:.92;margin-top:2px}
+    .btn .cd{font-size:11px;opacity:.85;margin-top:2px}
 
-    #joyArea{position:fixed;right:14px;bottom:14px;width:160px;height:160px;z-index:9999;touch-action:none}
-    #joyBase{position:absolute;inset:0;border-radius:999px;background:rgba(6,26,14,.52);border:1px solid rgba(234,255,243,.16)}
-    #joyStick{position:absolute;left:50%;top:50%;width:72px;height:72px;margin-left:-36px;margin-top:-36px;border-radius:999px;
-      background:rgba(52,211,153,.18);border:1px solid rgba(52,211,153,.50);display:grid;place-items:center;color:rgba(52,211,153,.95);font-weight:950}
-    #joyHint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:11px;color:rgba(167,243,208,.9);width:120px;text-align:center;pointer-events:none}
+    /* Joystick bottom-right */
+    #joyArea{
+      position:fixed;right:14px;bottom:14px;width:170px;height:170px;z-index:10000;
+      touch-action:none;user-select:none;
+    }
+    #joyBase{position:absolute;inset:0;border-radius:999px;background:rgba(0,0,0,.18);border:1px solid var(--ui-border);backdrop-filter: blur(6px)}
+    #joyStick{
+      position:absolute;left:50%;top:50%;width:74px;height:74px;margin-left:-37px;margin-top:-37px;border-radius:999px;
+      background:rgba(52,211,153,.18);border:1px solid rgba(52,211,153,.50);
+      display:grid;place-items:center;color:rgba(52,211,153,.95);font-weight:950;
+      transform: translate(0px,0px);
+    }
 
-    /* menu + confirm (minimal) */
-    #overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:20000}
-    #overlay.open{display:block}
-    #menuCard{position:fixed;right:10px;top:64px;width:min(92vw,380px);background:rgba(6,26,14,.88);
-      border:1px solid rgba(234,255,243,.16);border-radius:16px;padding:12px;color:#b7f7da}
-    #menuCard h3{margin:0 0 10px 0;color:#eafff3}
-    .mBtn{width:100%;padding:12px;border-radius:14px;border:1px solid rgba(234,255,243,.16);background:rgba(6,26,14,.85);color:#eafff3;font-weight:950;margin-top:10px}
+    /* Overlays */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:20000}
+    .overlay.open{display:block}
+    .card{
+      position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);
+      width:min(92vw,420px);background:rgba(6,26,14,.88);
+      border:1px solid var(--ui-border);border-radius:16px;padding:12px;color:var(--ui-sub);
+      backdrop-filter: blur(8px);
+      max-height: 82vh;
+      overflow:auto;
+    }
+    .card h3{margin:0 0 10px 0;color:var(--ui-text)}
+    .mBtn{
+      width:100%;padding:12px;border-radius:14px;border:1px solid var(--ui-border);
+      background:rgba(0,0,0,.20);color:var(--ui-text);font-weight:950;margin-top:10px;
+    }
+    .mBtn:disabled{opacity:.35}
+    .kv{display:flex;justify-content:space-between;gap:10px;margin-top:8px;font-weight:900}
+    .muted{opacity:.85}
 
-    #confirm{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;z-index:30000;align-items:center;justify-content:center;padding:18px}
-    #confirm.open{display:flex}
-    #confirmCard{width:min(92vw,420px);background:rgba(6,26,14,.92);border:1px solid rgba(234,255,243,.16);border-radius:16px;overflow:hidden}
-    #confirmTop{padding:12px;border-bottom:1px solid rgba(234,255,243,.16);font-weight:950}
-    #confirmMsg{padding:12px;color:#b7f7da;font-weight:900}
-    #confirmBtns{display:flex;gap:10px;padding:12px}
-    .cbtn{flex:1;padding:12px;border-radius:14px;border:1px solid rgba(234,255,243,.16);background:rgba(6,26,14,.85);color:#eafff3;font-weight:950}
-    .cbtn.ok{border-color:rgba(52,211,153,.45);background:rgba(52,211,153,.16)}
-    .cbtn.cancel{border-color:rgba(251,113,133,.35);background:rgba(251,113,133,.14);color:#ffe4e6}
-    .cbtn:disabled{opacity:.35}
+    #toast{
+      position:fixed;left:50%;bottom:200px;transform:translateX(-50%);
+      background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.18);
+      color:var(--ui-text);padding:10px 12px;border-radius:999px;z-index:30000;
+      display:none;max-width:min(92vw,520px);text-align:center;backdrop-filter: blur(8px);
+      font-weight:900;
+    }
+    .divider{height:1px;background:rgba(255,255,255,.12);margin:12px 0}
+    .small{font-size:12px}
   </style>
 </head>
 <body>
-  <div id="status">LOADING… (if this never changes, JS is not running)</div>
-  <div id="err"></div>
-
   <canvas id="game"></canvas>
 
   <div id="hud">
     <div class="row"><div class="label">HP</div><div class="icons" id="hearts"></div></div>
     <div class="row"><div class="label">DEF</div><div class="icons" id="shields"></div></div>
     <div class="row"><div class="label">ENERGY</div><div class="bar"><div class="fill" id="energyFill"></div></div></div>
-    <div class="row">
-      <div class="bar" id="tempWrap">
-        <div id="tempMid"></div>
-        <div class="fill" id="tempFill"></div>
-      </div>
-    </div>
+    <div class="row"><div class="label">TEMP</div><div class="bar"><div id="tempMid"></div><div class="fill" id="tempFill"></div></div></div>
   </div>
 
-  <div id="worldPill">
-    <span>World:</span><strong id="worldText">mainland</strong>
-    <span>•</span>
-    <span>Pos:</span><strong id="posText">0.0, 0.0</strong>
-    <button id="menuBtn">☰</button>
-  </div>
-
+  <button id="connectBtn">Connect</button>
+  <button id="menuBtn">☰</button>
   <button id="exitBtn">Exit</button>
 
-  <div id="attacks">
-    <div class="btn" id="atk1">A<small>Attack 1</small></div>
-    <div class="btn" id="atk2">B<small>Attack 2</small></div>
-    <div class="btn" id="bedBtn">🛏️<small>Rest</small></div>
+  <div id="buttons">
+    <div class="btn attack" id="atk1"></div>
+    <div class="btn attack" id="atk2"></div>
+    <div class="btn bed" id="bed">🛏</div>
   </div>
 
   <div id="joyArea">
     <div id="joyBase"></div>
-    <div id="joyHint">Drag to move</div>
     <div id="joyStick">◉</div>
   </div>
 
-  <div id="overlay">
-    <div id="menuCard">
+  <!-- Menu -->
+  <div id="ovMenu" class="overlay">
+    <div class="card">
       <h3>Menu</h3>
-      <div>Settings / Stats / Equipment / Mastery / Inventory (placeholders)</div>
-      <button class="mBtn" id="refreshBtn">Refresh Browser</button>
-      <button class="mBtn" id="closeMenuBtn">Close</button>
+      <button class="mBtn" id="mMap">Map</button>
+      <button class="mBtn" id="mStats">Stats</button>
+      <button class="mBtn" id="mEquip">Equipment</button>
+      <button class="mBtn" id="mHouse">House</button>
+      <button class="mBtn" id="mMastery">Mastery</button>
+      <button class="mBtn" id="mInv">Inventory</button>
+      <button class="mBtn" id="mRefresh">Refresh Browser</button>
+      <button class="mBtn" id="mClose">Close</button>
     </div>
   </div>
 
-  <div id="confirm">
-    <div id="confirmCard">
-      <div id="confirmTop">Confirm</div>
-      <div id="confirmMsg"></div>
-      <div id="confirmBtns">
-        <button class="cbtn ok" id="confirmOk">OK</button>
-        <button class="cbtn cancel" id="confirmCancel">Cancel</button>
+  <!-- Confirm -->
+  <div id="ovConfirm" class="overlay">
+    <div class="card">
+      <h3>Confirm</h3>
+      <div id="confirmMsg" style="color:var(--ui-sub);font-weight:900"></div>
+      <div style="display:flex;gap:10px;margin-top:12px">
+        <button class="mBtn" id="confirmOk" style="flex:1;border-color:rgba(52,211,153,.45);background:rgba(52,211,153,.20)">OK</button>
+        <button class="mBtn" id="confirmCancel" style="flex:1;border-color:rgba(251,113,133,.35);background:rgba(251,113,133,.20);color:#ffe4e6">Cancel</button>
       </div>
     </div>
   </div>
 
-  <script>
-  // Global error display (works if JS runs; parse errors still stop everything)
-  (function(){
-    const err = document.getElementById('err');
-    function show(e){
-      err.style.display='block';
-      err.textContent = 'ERROR:\\n' + (e && (e.stack || e.message) ? (e.stack || e.message) : String(e));
-    }
-    window.addEventListener('error', ev => show(ev.error || ev.message || ev), true);
-    window.addEventListener('unhandledrejection', ev => show(ev.reason || ev), true);
-  })();
-  </script>
-  <script>
-(() => {
-  const status = document.getElementById('status');
-  status.textContent = 'RUNNING ✅';
+  <!-- Bank NPC -->
+  <div id="ovNpc" class="overlay">
+    <div class="card">
+      <h3>Bank NPC</h3>
+      <div style="color:var(--ui-sub);font-weight:900">Choose an option:</div>
+      <button class="mBtn" id="npcMarket">Market</button>
+      <button class="mBtn" id="npcCharts">Charts</button>
+      <button class="mBtn" id="npcDonate">Donate ($1)</button>
+      <button class="mBtn" id="npcClose">Close</button>
+    </div>
+  </div>
 
-  // ===== Core constants =====
-  const WORLD = 30;
-  const VIEW = 10;
-  const PLAYER_SCALE = 0.80;
+  <!-- Equipment (combat + transportation) -->
+  <div id="ovEquip" class="overlay">
+    <div class="card">
+      <h3>Equipment</h3>
 
-  const maxHP = 20; let hp = 20;
-  const maxShields = 5; let shields = 0;
-  const maxEnergy = 10; let energy = 10; // no regen
-  const defaultTemp = 7; let temp = defaultTemp;
+      <div class="small" style="color:var(--ui-sub);font-weight:900;margin-bottom:6px">Combat</div>
+      <div class="kv"><span class="muted">Mainhand</span><span id="eqMain">-</span></div>
+      <button class="mBtn" id="uneqMain">Unequip Mainhand</button>
+      <div class="kv" style="margin-top:10px"><span class="muted">Offhand</span><span id="eqOff">-</span></div>
+      <button class="mBtn" id="uneqOff">Unequip Offhand</button>
+      <div class="kv" style="margin-top:12px"><span class="muted">Damage (Off / Main)</span><span id="eqDmg">0 / 0</span></div>
+      <div class="kv" style="margin-top:8px"><span class="muted">Cooldown (Off / Main)</span><span id="eqCd">2.0s / 2.0s</span></div>
 
-  const ATTACK_RADIUS = 2; // tiles
-  const SWING_COST = 1;
-  const SWING_DAMAGE = 5;
+      <div class="divider"></div>
 
-  // Worlds
-  const W_MAIN = "mainland";
-  const W1 = "OverW1";
-  const W2 = "OverW2";
-  const W3 = "OverW3";
-  const W_BANK = "Bank";
+      <div class="small" style="color:var(--ui-sub);font-weight:900;margin-bottom:6px">Transportation</div>
+      <div class="kv"><span class="muted">Slot 1 (Bike)</span><span id="trBikeSlot">Empty</span></div>
+      <button class="mBtn" id="trEquipBike">Equip Bike</button>
+      <button class="mBtn" id="trUnequipBike">Unequip Bike</button>
 
-  // Spawn: 2 tiles up from bottom center
-  const spawnTile = { x: Math.floor(WORLD/2), y: WORLD - 1 - 2 };
-  const spawn = { x: spawnTile.x + 0.5, y: spawnTile.y + 0.5 };
+      <div class="kv" style="margin-top:10px"><span class="muted">Slot 2 (Trailer)</span><span id="trTrailerSlot">Empty</span></div>
+      <button class="mBtn" id="trEquipTrailer">Equip Trailer</button>
+      <button class="mBtn" id="trUnequipTrailer">Unequip Trailer</button>
+      <div class="small" style="opacity:.85;margin-top:6px">Trailer requires Bike equipped.</div>
 
-  // Mainland portals
-  const overW1Tile = { x: spawnTile.x - 3, y: spawnTile.y - 6 };
-  const overW2Tile = { x: overW1Tile.x + 6, y: overW1Tile.y };
-  const overW3Tile = { x: overW1Tile.x, y: overW1Tile.y + 6 };
+      <div class="kv" style="margin-top:10px"><span class="muted">Slot 3</span><span id="trSlot3">Empty</span></div>
 
-  const overSpawn = { x: 29.5, y: 29.5 };
-  const bankSpawn = { x: 15.5, y: 27.5 };
+      <div class="kv" style="margin-top:12px"><span class="muted">Speed</span><span id="spdText">-</span></div>
 
-  // Shield station 6 above spawn, 1 available at a time
-  const shieldStationTile = { x: spawnTile.x, y: spawnTile.y - 6 };
-  let shieldStationAvailable = true;
-  let shieldRespawn = 0;
-  const SHIELD_RESPAWN_TIME = 30;
+      <button class="mBtn" id="equipClose">Close</button>
+    </div>
+  </div>
 
-  // Bank building tile
-  const bankTile = { x: spawnTile.x + 4, y: spawnTile.y - 3 };
+  <!-- Stats -->
+  <div id="ovStats" class="overlay">
+    <div class="card">
+      <h3>Stats</h3>
+      <div class="kv"><span class="muted">HP</span><span id="stHp">-</span></div>
+      <div class="kv"><span class="muted">Energy</span><span id="stEn">-</span></div>
+      <div class="kv"><span class="muted">Temp</span><span id="stTemp">-</span></div>
+      <div class="kv"><span class="muted">Damage Offhand</span><span id="stDmgA">-</span></div>
+      <div class="kv"><span class="muted">Damage Mainhand</span><span id="stDmgB">-</span></div>
+      <div class="kv"><span class="muted">Cooldown Off/Main</span><span id="stCd">-</span></div>
+      <div class="kv"><span class="muted">Move Speed</span><span id="stSpd">-</span></div>
+      <button class="mBtn" id="statsClose">Close</button>
+    </div>
+  </div>
 
-  // Jelly mob (OverW1/OverW3)
-  function makeJelly(){
-    return { x:13, y:13, w:4, h:4, hp:50, alive:true, affectedRange:2 };
-  }
-  let jelly = makeJelly();
+  <!-- House -->
+  <div id="ovHouse" class="overlay">
+    <div class="card">
+      <h3>House</h3>
+      <div class="kv"><span class="muted">House Level</span><span id="houseLvl">0.00</span></div>
+      <div style="margin-top:10px;color:var(--ui-sub);font-weight:900">Chests: House 1 / House 2 / House 3 (20 slots each)</div>
+      <button class="mBtn" id="houseClose">Close</button>
+    </div>
+  </div>
 
-  // ===== DOM =====
-  const canvas = document.getElementById('game');
-  const ctx = canvas.getContext('2d');
+  <!-- Map -->
+  <div id="ovMap" class="overlay">
+    <div class="card">
+      <h3>Map</h3>
+      <div style="color:var(--ui-sub);font-weight:900">Placeholder.</div>
+      <button class="mBtn" id="mapClose">Close</button>
+    </div>
+  </div>
 
-  const worldText = document.getElementById('worldText');
-  const posText = document.getElementById('posText');
+  <!-- Mastery -->
+  <div id="ovMastery" class="overlay">
+    <div class="card">
+      <h3>Mastery</h3>
+      <button class="mBtn" id="btnSkillMastery">Skill Mastery</button>
+      <button class="mBtn" id="btnMasteryEquip">Mastery Equipment</button>
+      <button class="mBtn" id="masteryClose">Close</button>
+    </div>
+  </div>
 
-  const heartsEl = document.getElementById('hearts');
-  const shieldsEl = document.getElementById('shields');
-  const energyFill = document.getElementById('energyFill');
-  const tempFill = document.getElementById('tempFill');
+  <!-- Skill Mastery -->
+  <div id="ovSkillMastery" class="overlay">
+    <div class="card">
+      <h3>Skill Mastery</h3>
+      <div class="kv"><span class="muted">Woodworking Level</span><span id="wwLevel">0</span></div>
+      <div class="kv"><span class="muted">Woodworking XP</span><span id="wwXp">0/100</span></div>
+      <div class="bar" style="width:100%;height:12px;margin-top:10px">
+        <div class="fill" id="wwBar" style="background:rgba(52,211,153,.95)"></div>
+      </div>
+      <button class="mBtn" id="skillMasteryClose">Close</button>
+    </div>
+  </div>
 
-  const atk1 = document.getElementById('atk1');
-  const atk2 = document.getElementById('atk2');
-  const bedBtn = document.getElementById('bedBtn');
-  const exitBtn = document.getElementById('exitBtn');
+  <!-- Mastery Equipment (TOOLS only) -->
+  <div id="ovMasteryEquip" class="overlay">
+    <div class="card">
+      <h3>Mastery Equipment</h3>
+      <div style="color:var(--ui-sub);font-weight:900;margin-bottom:6px">Woodworking Tools</div>
+      <div class="kv"><span class="muted">Tool Main</span><span id="mwMain">-</span></div>
+      <button class="mBtn" id="mwUnequipMain">Unequip Tool Main</button>
+      <div class="kv" style="margin-top:10px"><span class="muted">Tool Off</span><span id="mwOff">-</span></div>
+      <button class="mBtn" id="mwUnequipOff">Unequip Tool Off</button>
+      <div class="kv" style="margin-top:12px"><span class="muted">Skill Dmg (Off/Main)</span><span id="mwDmg">1 / 1</span></div>
+      <button class="mBtn" id="mwClose">Close</button>
+    </div>
+  </div>
 
-  const overlay = document.getElementById('overlay');
-  const menuBtn = document.getElementById('menuBtn');
-  const closeMenuBtn = document.getElementById('closeMenuBtn');
-  const refreshBtn = document.getElementById('refreshBtn');
+  <div id="toast"></div>
 
-  const confirmEl = document.getElementById('confirm');
-  const confirmMsgEl = document.getElementById('confirmMsg');
-  const confirmOk = document.getElementById('confirmOk');
-  const confirmCancel = document.getElementById('confirmCancel');
+<script>
+  (() => {
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const dist=(ax,ay,bx,by)=>Math.hypot(ax-bx,ay-by);
+  const floor=(n)=>Math.floor(n);
 
-  function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
-  function dist(ax,ay,bx,by){ return Math.hypot(ax-bx, ay-by); }
-  function tileCenter(t){ return { x:t.x+0.5, y:t.y+0.5 }; }
-  function distPointToRect(px, py, rx, ry, rw, rh){
-    const cx = clamp(px, rx, rx+rw);
-    const cy = clamp(py, ry, ry+rh);
-    return Math.hypot(px-cx, py-cy);
-  }
-
-  // ===== Canvas resize (FULLSCREEN) =====
+  // ===== Canvas =====
+  const canvas=document.getElementById("game");
+  const ctx=canvas.getContext("2d");
   function resize(){
-    const w = Math.floor(window.innerWidth);
-    const h = Math.floor(window.innerHeight);
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
+    const dpr=window.devicePixelRatio||1;
+    canvas.width=Math.floor(innerWidth*dpr);
+    canvas.height=Math.floor(innerHeight*dpr);
     ctx.setTransform(dpr,0,0,dpr,0,0);
   }
-  window.addEventListener('resize', resize, { passive:true });
+  addEventListener("resize", resize, {passive:true});
   resize();
 
-  function metrics(){
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    const size = Math.min(w,h);
-    const tilePx = size / VIEW;
-    const viewPx = tilePx * VIEW;
-    const ox = (w - viewPx)/2;
-    const oy = (h - viewPx)/2;
-    return { w,h,size,tilePx,viewPx,ox,oy };
+  // ===== HUD refs =====
+  const heartsEl=document.getElementById("hearts");
+  const shieldsEl=document.getElementById("shields");
+  const energyFill=document.getElementById("energyFill");
+  const tempFill=document.getElementById("tempFill");
+
+  // ===== Top refs =====
+  const connectBtn=document.getElementById("connectBtn");
+  const menuBtn=document.getElementById("menuBtn");
+  const exitBtn=document.getElementById("exitBtn");
+
+  // ===== Overlays =====
+  const ovMenu=document.getElementById("ovMenu");
+  const ovConfirm=document.getElementById("ovConfirm");
+  const ovNpc=document.getElementById("ovNpc");
+  const ovEquip=document.getElementById("ovEquip");
+  const ovStats=document.getElementById("ovStats");
+  const ovHouse=document.getElementById("ovHouse");
+  const ovMap=document.getElementById("ovMap");
+  const ovMastery=document.getElementById("ovMastery");
+  const ovSkillMastery=document.getElementById("ovSkillMastery");
+  const ovMasteryEquip=document.getElementById("ovMasteryEquip");
+
+  const overlays=[ovMenu,ovConfirm,ovNpc,ovEquip,ovStats,ovHouse,ovMap,ovMastery,ovSkillMastery,ovMasteryEquip];
+
+  // Tap outside closes ONLY that window
+  function closeOverlay(ov){
+    ov.classList.remove("open");
+    if(ov===ovConfirm) closeConfirm();
+    if(ov===ovNpc) closeNpc();
+  }
+  for(const ov of overlays){
+    ov.addEventListener("pointerdown",(e)=>{ if(e.target===ov) closeOverlay(ov); });
   }
 
-  // ===== World state =====
-  let currentWorld = W_MAIN;
-  function setWorld(name){
-    currentWorld = name;
-    worldText.textContent = name;
-    exitBtn.style.display = (name === W_MAIN) ? 'none' : 'block';
-    if (name === W1 || name === W3) jelly = makeJelly();
+  function closeAllWindows(){
+    for(const ov of overlays) ov.classList.remove("open");
+    closeConfirm();
+    closeNpc();
   }
 
-  // ===== Confirm =====
-  let confirmOpen = false;
-  let okFn = null, cancelFn = null;
+  // ===== Toast =====
+  const toast=document.getElementById("toast");
+  function toastMsg(msg){
+    toast.textContent=msg;
+    toast.style.display="block";
+    clearTimeout(toast._t);
+    toast._t=setTimeout(()=>toast.style.display="none", 2800);
+  }
 
-  function openConfirm(msg, ok, cancel, opts){
-    confirmOpen = true;
-    okFn = ok; cancelFn = cancel;
-    confirmMsgEl.textContent = msg;
-    confirmEl.classList.add('open');
+  // ===== Menu btn refs =====
+  const mMap=document.getElementById("mMap");
+  const mStats=document.getElementById("mStats");
+  const mEquip=document.getElementById("mEquip");
+  const mHouse=document.getElementById("mHouse");
+  const mMastery=document.getElementById("mMastery");
+  const mInv=document.getElementById("mInv");
+  const mRefresh=document.getElementById("mRefresh");
+  const mClose=document.getElementById("mClose");
 
-    const disable = opts && opts.disableButtons;
-    confirmOk.disabled = !!disable;
-    confirmCancel.disabled = !!disable;
+  // Confirm
+  const confirmMsg=document.getElementById("confirmMsg");
+  const confirmOk=document.getElementById("confirmOk");
+  const confirmCancel=document.getElementById("confirmCancel");
+
+  // NPC
+  const npcMarket=document.getElementById("npcMarket");
+  const npcCharts=document.getElementById("npcCharts");
+  const npcDonate=document.getElementById("npcDonate");
+  const npcClose=document.getElementById("npcClose");
+
+  // Combat equipment UI refs
+  const eqMain=document.getElementById("eqMain");
+  const eqOff=document.getElementById("eqOff");
+  const eqDmg=document.getElementById("eqDmg");
+  const eqCd=document.getElementById("eqCd");
+  const uneqMain=document.getElementById("uneqMain");
+  const uneqOff=document.getElementById("uneqOff");
+  const equipClose=document.getElementById("equipClose");
+
+  // Transportation UI refs
+  const trBikeSlot=document.getElementById("trBikeSlot");
+  const trTrailerSlot=document.getElementById("trTrailerSlot");
+  const trSlot3=document.getElementById("trSlot3");
+  const trEquipBike=document.getElementById("trEquipBike");
+  const trUnequipBike=document.getElementById("trUnequipBike");
+  const trEquipTrailer=document.getElementById("trEquipTrailer");
+  const trUnequipTrailer=document.getElementById("trUnequipTrailer");
+  const spdText=document.getElementById("spdText");
+
+  // Stats UI refs
+  const stHp=document.getElementById("stHp");
+  const stEn=document.getElementById("stEn");
+  const stTemp=document.getElementById("stTemp");
+  const stDmgA=document.getElementById("stDmgA");
+  const stDmgB=document.getElementById("stDmgB");
+  const stCd=document.getElementById("stCd");
+  const stSpd=document.getElementById("stSpd");
+  const statsClose=document.getElementById("statsClose");
+
+  // House UI refs
+  const houseLvlEl=document.getElementById("houseLvl");
+  const houseClose=document.getElementById("houseClose");
+
+  // Map close
+  const mapClose=document.getElementById("mapClose");
+
+  // Mastery UI refs
+  const btnSkillMastery=document.getElementById("btnSkillMastery");
+  const btnMasteryEquip=document.getElementById("btnMasteryEquip");
+  const masteryClose=document.getElementById("masteryClose");
+
+  const wwLevelEl=document.getElementById("wwLevel");
+  const wwXpEl=document.getElementById("wwXp");
+  const wwBar=document.getElementById("wwBar");
+  const skillMasteryClose=document.getElementById("skillMasteryClose");
+
+  const mwMain=document.getElementById("mwMain");
+  const mwOff=document.getElementById("mwOff");
+  const mwDmg=document.getElementById("mwDmg");
+  const mwUnequipMain=document.getElementById("mwUnequipMain");
+  const mwUnequipOff=document.getElementById("mwUnequipOff");
+  const mwClose=document.getElementById("mwClose");
+
+  // Combat buttons
+  const atk1=document.getElementById("atk1");
+  const atk2=document.getElementById("atk2");
+  const bed=document.getElementById("bed");
+
+  // ===== Constants =====
+  const WORLD=30;
+  const PLAYER_SCALE=0.80;
+
+  const MAX_HP=20;
+  const MAX_SHIELDS=5;
+  const MAX_ENERGY=10;
+  const DEFAULT_TEMP=7;
+
+  const SWING_COST=1;
+  const SWING_RANGE=2;
+  const ENTRY_COST=1;
+  const LEVEL_INC=0.10;
+
+  const SHIELD_RANGE=1.5;
+  const BASE_ATTACK_COOLDOWN=2.0;
+
+  // Player base speed 25% slower (6 -> 4.5)
+  const BASE_SPEED=4.5;
+
+  // ===== Worlds =====
+  const W_MAIN="mainland";
+  const W_BANK="Bank";
+  const W_HOUSE="House";
+  const W_HOUSE_B="HouseBasement";
+  const W1="OverW1";
+  const W2="OverW2";
+  const W3="OverW3";
+  const W4="OverW4";
+  let world=W_MAIN;
+
+  // Mainland spawn
+  const spawnTile={x: floor(WORLD/2), y: WORLD-1-6};
+  const spawn={x: spawnTile.x+0.5, y: spawnTile.y+0.5};
+
+  // OverW entrances identity correct (W1 tree, W2 earth, W3 mountain, W4 cave)
+  const overW1Tile={x: spawnTile.x-3, y: spawnTile.y-6};
+  const overW2Tile={x: overW1Tile.x+6, y: overW1Tile.y};
+  const overW3Tile={x: overW1Tile.x, y: overW1Tile.y+6};
+  const overW4Tile={x: overW3Tile.x+6, y: overW3Tile.y};
+  let portalArmed={w1:true,w2:true,w3:true,w4:true};
+
+  // OverW spawns
+  const spawnW1={x:3.5,y:3.5};
+  const spawnW2={x:3.5,y:26.5};
+  const spawnW3={x:26.5,y:3.5};
+  const spawnW4={x:3.5,y:3.5};
+
+  const spawnTileW1={x:3,y:3};
+  const spawnTileW2={x:3,y:26};
+  const spawnTileW3={x:26,y:3};
+  const spawnTileW4={x:3,y:3};
+
+  // Bank moved up earlier
+  const bankTile={x: spawnTile.x+2, y: (spawnTile.y-8)-2};
+  const bankSpawn={x: 15.5, y: 27.5};
+  const bankSpawnTile={x:15,y:27};
+  let bankPromptArmed=true;
+
+  // House + spawn moved up 4 tiles
+  const houseTile={x: spawnTile.x-6, y: spawnTile.y-3};
+  const houseSpawn={x: 14.5, y: 23.5};
+  const houseSpawnTile={x:14,y:23};
+  let housePromptArmed=true;
+
+  // Basement
+  const houseBSpawn={x: 14.5, y: 23.5};
+
+  // Trapdoor
+  const trapdoorTile={x: houseSpawnTile.x+3, y: houseSpawnTile.y+3};
+  let trapPromptArmed=true;
+
+  // Levels
+  let lvlBank=0.00, lvlHouse=0.00, lvlHouseB=0.00, lvlW1=0.00, lvlW2=0.00, lvlW3=0.00, lvlW4=0.00;
+
+  // Shield station
+  const shieldTile={x: spawnTile.x, y: spawnTile.y-8};
+  let shieldAvailable=true, shieldRespawn=0;
+  const SHIELD_RESPAWN=30;
+
+  // Bank NPC
+  const npcTile={x: 17, y: 22};
+  const npcCenter={x: npcTile.x+0.5, y: npcTile.y+0.5};
+
+  // House chests
+  const chestCap=20;
+  const chest1Tile={x: houseSpawnTile.x+7, y: houseSpawnTile.y};
+  const chest2Tile={x: chest1Tile.x+2, y: chest1Tile.y};
+  const chest3Tile={x: chest2Tile.x+2, y: chest1Tile.y};
+  const chests={
+    house1: new Array(chestCap).fill(null),
+    house2: new Array(chestCap).fill(null),
+    house3: new Array(chestCap).fill(null),
+  };
+  let chestPromptArmed={c1:true,c2:true,c3:true};
+
+  // OverW1 tree node (skill dmg)
+  const treeNode={x:10,y:10,w:1,h:1,hp:10,max:10,alive:true};
+
+  // Jelly mob
+  function makeJelly(){ return {x:13,y:13,w:4,h:4,hp:50,alive:true}; }
+  let jelly=makeJelly();
+  function resetOverWObjects(){
+    jelly=makeJelly();
+    treeNode.hp=10; treeNode.alive=true;
+  }
+    // ===== Player =====
+  const player={x:spawn.x,y:spawn.y, fx:0,fy:-1};
+  const playerRadius=0.30;
+
+  let hp=MAX_HP;
+  let shields=0;
+  let energy=MAX_ENERGY;
+  let temp=DEFAULT_TEMP;
+
+  // ===== Inventory (simple list) =====
+  // Bike + Trailer are in inventory by default
+  const inventory={
+    bike: {id:"bike", name:"Bike", icon:"🚲"},
+    trailer: {id:"trailer", name:"Trailer", icon:"🛞"},
+  };
+
+  // ===== Transportation equipment (separate from Combat & Mastery) =====
+  const transportEquip={
+    bike: null,     // inventory.bike
+    trailer: null,  // inventory.trailer (requires bike)
+    slot3: null
+  };
+
+  function speedMultiplier(){
+    let m=1;
+    if(transportEquip.bike) m += 1.0;     // +100%
+    if(transportEquip.trailer) m += 0.5;  // +50%
+    return m;
+  }
+  function currentSpeed(){
+    return BASE_SPEED * speedMultiplier();
+  }
+
+  function refreshTransportUI(){
+    trBikeSlot.textContent = transportEquip.bike ? `${inventory.bike.icon} ${inventory.bike.name}` : "Empty";
+    trTrailerSlot.textContent = transportEquip.trailer ? `${inventory.trailer.icon} ${inventory.trailer.name}` : "Empty";
+    trSlot3.textContent="Empty";
+
+    trEquipBike.disabled = !inventory.bike || !!transportEquip.bike;
+    trUnequipBike.disabled = !transportEquip.bike;
+
+    const canEquipTrailer = !!inventory.trailer && !!transportEquip.bike && !transportEquip.trailer;
+    trEquipTrailer.disabled = !canEquipTrailer;
+    trUnequipTrailer.disabled = !transportEquip.trailer;
+
+    spdText.textContent = `${currentSpeed().toFixed(2)} tiles/s (x${speedMultiplier().toFixed(2)})`;
+  }
+
+  trEquipBike.onclick=()=>{
+    if(!inventory.bike) return;
+    transportEquip.bike = inventory.bike;
+    refreshTransportUI();
+    toastMsg("Bike equipped.");
+  };
+  trUnequipBike.onclick=()=>{
+    // unequipping bike also unequips trailer
+    transportEquip.bike=null;
+    transportEquip.trailer=null;
+    refreshTransportUI();
+    toastMsg("Bike unequipped.");
+  };
+  trEquipTrailer.onclick=()=>{
+    if(!inventory.trailer) return;
+    if(!transportEquip.bike){ toastMsg("Trailer requires Bike equipped."); return; }
+    transportEquip.trailer = inventory.trailer;
+    refreshTransportUI();
+    toastMsg("Trailer equipped.");
+  };
+  trUnequipTrailer.onclick=()=>{
+    transportEquip.trailer=null;
+    refreshTransportUI();
+    toastMsg("Trailer unequipped.");
+  };
+
+  // ===== Combat equipment (ONLY affects combat dmg/cooldown and attack buttons) =====
+  const Items={
+    MainFist:{ id:"MainFist", name:"Fist", slot:"mainhand", dmg:1, icon:"👊", cdMul:1.0 },
+    OffFist:{ id:"OffFist", name:"Fist", slot:"offhand", dmg:1, icon:"👊", cdMul:1.0 },
+  };
+  const equipment={ mainhand: Items.MainFist, offhand: Items.OffFist };
+  function ensureCombatDefaults(){
+    if(!equipment.mainhand) equipment.mainhand=Items.MainFist;
+    if(!equipment.offhand) equipment.offhand=Items.OffFist;
+  }
+  function dmgMain(){ ensureCombatDefaults(); return equipment.mainhand?.dmg ?? 0; }
+  function dmgOff(){ ensureCombatDefaults(); return equipment.offhand?.dmg ?? 0; }
+  function cdMain(){ ensureCombatDefaults(); return BASE_ATTACK_COOLDOWN * (equipment.mainhand?.cdMul ?? 1); }
+  function cdOff(){ ensureCombatDefaults(); return BASE_ATTACK_COOLDOWN * (equipment.offhand?.cdMul ?? 1); }
+
+  let lastAtkMain=-9999;
+  let lastAtkOff=-9999;
+
+  function setAttackButtons(nowSec){
+    ensureCombatDefaults();
+    const off=equipment.offhand, main=equipment.mainhand;
+    const offRem = Math.max(0, (lastAtkOff + cdOff()) - nowSec);
+    const mainRem= Math.max(0, (lastAtkMain + cdMain()) - nowSec);
+    atk1.innerHTML = `<div class="slot">OFF</div><div class="ico">${off?.icon||"?"}</div><div class="name">${off?.name||"-"}</div><div class="cd">${offRem>0?offRem.toFixed(1)+"s":""}</div>`;
+    atk2.innerHTML = `<div class="slot">MAIN</div><div class="ico">${main?.icon||"?"}</div><div class="name">${main?.name||"-"}</div><div class="cd">${mainRem>0?mainRem.toFixed(1)+"s":""}</div>`;
+  }
+
+  function refreshEquipUI(nowSec=0){
+    ensureCombatDefaults();
+    eqMain.textContent = `${equipment.mainhand.icon} ${equipment.mainhand.name}`;
+    eqOff.textContent  = `${equipment.offhand.icon} ${equipment.offhand.name}`;
+    eqDmg.textContent  = `${dmgOff()} / ${dmgMain()}`;
+    eqCd.textContent   = `${cdOff().toFixed(1)}s / ${cdMain().toFixed(1)}s`;
+    setAttackButtons(nowSec);
+
+    // Transportation UI is in Equipment menu too
+    refreshTransportUI();
+  }
+  uneqMain.onclick=()=>{ equipment.mainhand=null; ensureCombatDefaults(); refreshEquipUI(performance.now()/1000); toastMsg("Mainhand reset to default fist."); };
+  uneqOff.onclick =()=>{ equipment.offhand=null; ensureCombatDefaults(); refreshEquipUI(performance.now()/1000); toastMsg("Offhand reset to default fist."); };
+  equipClose.onclick=()=>closeOverlay(ovEquip);
+
+  // ===== Mastery Equipment (TOOLS only) =====
+  // NOTE: This does NOT override combat main/offhand display.
+  const ToolItems={
+    ToolFistMain:{ id:"ToolFistMain", name:"Fist", icon:"👊", dmg:1 },
+    ToolFistOff:{ id:"ToolFistOff", name:"Fist", icon:"👊", dmg:1 },
+  };
+  const masteryEquip={ woodMain: ToolItems.ToolFistMain, woodOff: ToolItems.ToolFistOff };
+  function ensureToolDefaults(){
+    if(!masteryEquip.woodMain) masteryEquip.woodMain=ToolItems.ToolFistMain;
+    if(!masteryEquip.woodOff) masteryEquip.woodOff=ToolItems.ToolFistOff;
+  }
+  function skillDmgMain(){ ensureToolDefaults(); return masteryEquip.woodMain?.dmg ?? 0; }
+  function skillDmgOff(){ ensureToolDefaults(); return masteryEquip.woodOff?.dmg ?? 0; }
+
+  function refreshMasteryEquipUI(){
+    ensureToolDefaults();
+    mwMain.textContent = `${masteryEquip.woodMain.icon} ${masteryEquip.woodMain.name}`;
+    mwOff.textContent  = `${masteryEquip.woodOff.icon} ${masteryEquip.woodOff.name}`;
+    mwDmg.textContent  = `${skillDmgOff()} / ${skillDmgMain()}`;
+  }
+  mwUnequipMain.onclick=()=>{ masteryEquip.woodMain=null; ensureToolDefaults(); refreshMasteryEquipUI(); toastMsg("Tool Main reset to default fist."); };
+  mwUnequipOff.onclick =()=>{ masteryEquip.woodOff=null; ensureToolDefaults(); refreshMasteryEquipUI(); toastMsg("Tool Off reset to default fist."); };
+  mwClose.onclick=()=>closeOverlay(ovMasteryEquip);
+
+  // ===== Woodworking XP/Level =====
+  let wwLevel=0;
+  let wwXp=0;
+  const WW_CAP=100;
+
+  function addWoodXp(amount){
+    wwXp += amount;
+    while(wwXp >= WW_CAP){
+      wwXp -= WW_CAP;
+      wwLevel += 1;
+    }
+    refreshSkillMasteryUI();
+  }
+  function refreshSkillMasteryUI(){
+    wwLevelEl.textContent = `${wwLevel}`;
+    wwXpEl.textContent = `${wwXp}/${WW_CAP}`;
+    wwBar.style.width = `${(wwXp/WW_CAP)*100}%`;
+  }
+  refreshSkillMasteryUI();
+
+  // ===== HUD =====
+  function updateHUD(){
+    heartsEl.innerHTML="";
+    const full=floor(hp/2);
+    const half=(hp%2)===1;
+    for(let i=0;i<10;i++){
+      const s=document.createElement("span");
+      s.className="heart";
+      s.textContent = (i<full) ? "❤" : (i===full && half) ? "💔" : "♡";
+      heartsEl.appendChild(s);
+    }
+    shieldsEl.innerHTML="";
+    for(let i=0;i<MAX_SHIELDS;i++){
+      const s=document.createElement("span");
+      s.className="shield";
+      s.textContent = (i<shields) ? "🛡️" : "▫️";
+      shieldsEl.appendChild(s);
+    }
+    energyFill.style.width=`${(energy/MAX_ENERGY)*100}%`;
+
+    const width=Math.abs((temp/10)*50);
+    if(temp>=0){ tempFill.style.left="50%"; tempFill.style.width=width+"%"; }
+    else { tempFill.style.left=(50-width)+"%"; tempFill.style.width=width+"%"; }
+    const tnorm=clamp((temp+10)/20,0,1);
+    const r=Math.round(40+215*tnorm);
+    const b=Math.round(255-215*tnorm);
+    tempFill.style.background=`rgb(${r},80,${b})`;
+  }
+  updateHUD();
+  refreshEquipUI(performance.now()/1000);
+  refreshMasteryEquipUI();
+
+  // ===== Stats UI =====
+  function refreshStatsUI(){
+    stHp.textContent = `${hp}/${MAX_HP}`;
+    stEn.textContent = `${energy}/${MAX_ENERGY}`;
+    stTemp.textContent = `${temp}`;
+    stDmgA.textContent = `${dmgOff()}`;
+    stDmgB.textContent = `${dmgMain()}`;
+    stCd.textContent   = `${cdOff().toFixed(1)}s / ${cdMain().toFixed(1)}s`;
+    stSpd.textContent  = `${currentSpeed().toFixed(2)} tiles/s (x${speedMultiplier().toFixed(2)})`;
+                   }
+    // ===== Confirm =====
+  let confirmOpen=false;
+  let _ok=null,_cancel=null;
+  function openConfirm(msg, ok, cancel, opts={}){
+    confirmOpen=true;
+    confirmMsg.textContent=msg;
+    _ok=ok||null; _cancel=cancel||null;
+    confirmOk.disabled=!!opts.okDisabled;
+    confirmCancel.disabled=!!opts.cancelDisabled;
+    ovConfirm.classList.add("open");
   }
   function closeConfirm(){
-    confirmOpen = false;
-    okFn = null; cancelFn = null;
-    confirmEl.classList.remove('open');
-    confirmOk.disabled = false;
-    confirmCancel.disabled = false;
+    confirmOpen=false;
+    _ok=null; _cancel=null;
+    confirmOk.disabled=false; confirmCancel.disabled=false;
+    ovConfirm.classList.remove("open");
+  }
+  confirmOk.onclick=()=>{ if(confirmOk.disabled) return; const f=_ok; closeConfirm(); f && f(); };
+  confirmCancel.onclick=()=>{ if(confirmCancel.disabled) return; const f=_cancel; closeConfirm(); f && f(); };
+
+  // ===== NPC =====
+  let npcOpen=false;
+  function openNpc(){ npcOpen=true; ovNpc.classList.add("open"); }
+  function closeNpc(){ npcOpen=false; ovNpc.classList.remove("open"); }
+  npcClose.onclick=()=>closeNpc();
+  npcMarket.onclick=()=>toastMsg("Market (placeholder)");
+  npcCharts.onclick=()=>toastMsg("Charts (placeholder)");
+
+  // ===== Base connect + donate =====
+  const DONATE_TO="0xc0C478E92a8bb67AbD54bbee60528079bDc454D9";
+  const BASE_CHAIN_ID="0x2105";
+  let connectedAccount=null;
+
+  async function ensureBaseChain(){
+    const eth=window.ethereum;
+    if(!eth) throw new Error("No wallet provider. Use Base Wallet browser.");
+    try{
+      await eth.request({method:"wallet_switchEthereumChain", params:[{chainId:BASE_CHAIN_ID}]});
+    }catch(e){
+      await eth.request({
+        method:"wallet_addEthereumChain",
+        params:[{
+          chainId:BASE_CHAIN_ID,
+          chainName:"Base",
+          nativeCurrency:{name:"Ether",symbol:"ETH",decimals:18},
+          rpcUrls:["https://mainnet.base.org"],
+          blockExplorerUrls:["https://basescan.org"]
+        }]
+      });
+      await eth.request({method:"wallet_switchEthereumChain", params:[{chainId:BASE_CHAIN_ID}]});
+    }
+  }
+  function shortAddr(a){ return a ? (a.slice(0,6)+"…"+a.slice(-4)) : ""; }
+
+  async function connectBase(){
+    try{
+      const eth=window.ethereum;
+      if(!eth){ toastMsg("No wallet found. Open in Base Wallet browser."); return; }
+      await ensureBaseChain();
+      const [acct]=await eth.request({method:"eth_requestAccounts"});
+      connectedAccount=acct;
+      connectBtn.textContent = shortAddr(acct);
+      toastMsg("Connected: " + shortAddr(acct));
+    }catch(e){
+      toastMsg("Connect canceled / failed.");
+    }
+  }
+  connectBtn.onclick=()=>connectBase();
+
+  async function fetchEthUsd(){
+    try{
+      const r=await fetch("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd", {cache:"no-store"});
+      const j=await r.json();
+      const p=j?.ethereum?.usd;
+      if(typeof p==="number" && p>0) return p;
+    }catch(_){}
+    return null;
+  }
+  function toHexWeiFromEth(ethAmount){
+    const wei = BigInt(Math.floor(ethAmount * 1e18));
+    return "0x" + wei.toString(16);
   }
 
-  confirmOk.addEventListener('click', ()=>{ if(confirmOk.disabled) return; const f=okFn; closeConfirm(); f && f(); });
-  confirmCancel.addEventListener('click', ()=>{ if(confirmCancel.disabled) return; const f=cancelFn; closeConfirm(); f && f(); });
-  confirmEl.addEventListener('click', (e)=>{ if(e.target===confirmEl) closeConfirm(); });
+  npcDonate.onclick=async ()=>{
+    openConfirm("Press okay to support the project.", async ()=>{
+      try{
+        const eth=window.ethereum;
+        if(!eth){ toastMsg("No wallet provider. Use Base Wallet browser."); return; }
+        await ensureBaseChain();
+        const [from]=await eth.request({method:"eth_requestAccounts"});
+        connectedAccount=from;
+        connectBtn.textContent = shortAddr(from);
 
-  // ===== Menu =====
-  menuBtn.addEventListener('click', ()=> overlay.classList.add('open'));
-  closeMenuBtn.addEventListener('click', ()=> overlay.classList.remove('open'));
-  overlay.addEventListener('click', (e)=>{ if(e.target===overlay) overlay.classList.remove('open'); });
-  refreshBtn.addEventListener('click', ()=> location.reload());
+        toastMsg("Preparing ~$1 donation…");
+        const ethUsd=await fetchEthUsd();
+        const price = ethUsd || 2000;
+        const ethAmt = 1/price;
+        const value = toHexWeiFromEth(ethAmt);
 
-  // ===== Player =====
-  const player = { x: spawn.x, y: spawn.y, speed: 6, vx:0, vy:0, fx:0, fy:-1 };
+        toastMsg("Confirm in wallet…");
+        await eth.request({ method:"eth_sendTransaction", params:[{ from, to:DONATE_TO, value }] });
 
-  // ===== Joystick =====
-  const joyArea = document.getElementById('joyArea');
-  const joyStick = document.getElementById('joyStick');
-  const joyHint = document.getElementById('joyHint');
-  let joyActive=false, joyId=null, joyCenter={x:0,y:0}, joyVec={x:0,y:0};
+        toastMsg("Payment Processed!");
+        setTimeout(()=>{
+          toastMsg("Part of the proceeds will be pumped into the Utility Token Ecosystem to help add Market + Earning later. Thank you and welcome to Volatile Legacy!");
+        }, 900);
+
+      }catch(e){
+        toastMsg("Canceled / failed.");
+      }
+    }, ()=>{});
+  };
+
+  // ===== Menu wiring =====
+  menuBtn.onclick=()=>ovMenu.classList.add("open");
+  mClose.onclick=()=>closeOverlay(ovMenu);
+  mRefresh.onclick=()=>location.reload();
+
+  mStats.onclick=()=>{ closeOverlay(ovMenu); refreshStatsUI(); ovStats.classList.add("open"); };
+  statsClose.onclick=()=>closeOverlay(ovStats);
+
+  mEquip.onclick=()=>{ closeOverlay(ovMenu); refreshEquipUI(performance.now()/1000); ovEquip.classList.add("open"); };
+  mHouse.onclick=()=>{ closeOverlay(ovMenu); houseLvlEl.textContent=lvlHouse.toFixed(2); ovHouse.classList.add("open"); };
+  houseClose.onclick=()=>closeOverlay(ovHouse);
+
+  mMap.onclick=()=>{ closeOverlay(ovMenu); ovMap.classList.add("open"); };
+  mapClose.onclick=()=>closeOverlay(ovMap);
+
+  mMastery.onclick=()=>{ closeOverlay(ovMenu); ovMastery.classList.add("open"); };
+  masteryClose.onclick=()=>closeOverlay(ovMastery);
+
+  btnSkillMastery.onclick=()=>{ closeOverlay(ovMastery); refreshSkillMasteryUI(); ovSkillMastery.classList.add("open"); };
+  skillMasteryClose.onclick=()=>closeOverlay(ovSkillMastery);
+
+  btnMasteryEquip.onclick=()=>{ closeOverlay(ovMastery); refreshMasteryEquipUI(); ovMasteryEquip.classList.add("open"); };
+
+  // ===== Helpers =====
+  const tileCenter=(t)=>({x:t.x+0.5,y:t.y+0.5});
+  const playerTile=()=>({x:floor(player.x),y:floor(player.y)});
+  const inRangeTile=(t,r)=>{ const c=tileCenter(t); return dist(player.x,player.y,c.x,c.y)<=r; };
+
+  // ===== Exit / Zone change (only place that auto-closes ALL) =====
+  function setWorld(name){
+    world=name;
+    exitBtn.style.display = (world===W_MAIN) ? "none" : "block";
+    if(world===W1 || world===W2 || world===W3 || world===W4) resetOverWObjects();
+  }
+  function zoneChange(toWorld, x, y){
+    closeAllWindows();
+    setWorld(toWorld);
+    player.x=x; player.y=y;
+  }
+  exitBtn.onclick=()=>zoneChange(W_MAIN, spawn.x, spawn.y);
+    // ===== Entrances / entries cost =====
+  function enterOver(which){
+    if(energy<ENTRY_COST){ toastMsg("Not enough energy."); return; }
+    energy-=ENTRY_COST; updateHUD();
+
+    if(which==="w1"){ lvlW1=+(lvlW1+LEVEL_INC).toFixed(2); zoneChange(W1, spawnW1.x, spawnW1.y); }
+    if(which==="w2"){ lvlW2=+(lvlW2+LEVEL_INC).toFixed(2); zoneChange(W2, spawnW2.x, spawnW2.y); }
+    if(which==="w3"){ lvlW3=+(lvlW3+LEVEL_INC).toFixed(2); zoneChange(W3, spawnW3.x, spawnW3.y); }
+    if(which==="w4"){ lvlW4=+(lvlW4+LEVEL_INC).toFixed(2); zoneChange(W4, spawnW4.x, spawnW4.y); }
+  }
+
+  function handleEntrances(){
+    if(world!==W_MAIN || confirmOpen || npcOpen) return;
+    const t=playerTile();
+
+    if(t.x!==overW1Tile.x || t.y!==overW1Tile.y) portalArmed.w1=true;
+    if(t.x!==overW2Tile.x || t.y!==overW2Tile.y) portalArmed.w2=true;
+    if(t.x!==overW3Tile.x || t.y!==overW3Tile.y) portalArmed.w3=true;
+    if(t.x!==overW4Tile.x || t.y!==overW4Tile.y) portalArmed.w4=true;
+
+    if(portalArmed.w1 && t.x===overW1Tile.x && t.y===overW1Tile.y){ portalArmed.w1=false; openConfirm("Enter OverW1? Costs 1 energy.", ()=>enterOver("w1"), ()=>{}); }
+    if(portalArmed.w2 && t.x===overW2Tile.x && t.y===overW2Tile.y){ portalArmed.w2=false; openConfirm("Enter OverW2? Costs 1 energy.", ()=>enterOver("w2"), ()=>{}); }
+    if(portalArmed.w3 && t.x===overW3Tile.x && t.y===overW3Tile.y){ portalArmed.w3=false; openConfirm("Enter OverW3? Costs 1 energy.", ()=>enterOver("w3"), ()=>{}); }
+    if(portalArmed.w4 && t.x===overW4Tile.x && t.y===overW4Tile.y){ portalArmed.w4=false; openConfirm("Enter OverW4? Costs 1 energy.", ()=>enterOver("w4"), ()=>{}); }
+  }
+
+  function handleBank(){
+    if(world!==W_MAIN || confirmOpen || npcOpen) return;
+    const near=inRangeTile(bankTile,2);
+    if(!near){ bankPromptArmed=true; return; }
+    if(!bankPromptArmed) return;
+    bankPromptArmed=false;
+
+    openConfirm("Enter Bank? Costs 1 energy.", ()=>{
+      if(energy<ENTRY_COST){ toastMsg("Not enough energy."); return; }
+      energy-=ENTRY_COST; updateHUD();
+      lvlBank = +(lvlBank + LEVEL_INC).toFixed(2);
+      zoneChange(W_BANK, bankSpawn.x, bankSpawn.y);
+    }, ()=>{});
+  }
+
+  function handleHouse(){
+    if(world!==W_MAIN || confirmOpen || npcOpen) return;
+    const near=inRangeTile(houseTile,2);
+    if(!near){ housePromptArmed=true; return; }
+    if(!housePromptArmed) return;
+    housePromptArmed=false;
+
+    openConfirm("Enter House? Costs 1 energy.", ()=>{
+      if(energy<ENTRY_COST){ toastMsg("Not enough energy."); return; }
+      energy-=ENTRY_COST; updateHUD();
+      lvlHouse = +(lvlHouse + LEVEL_INC).toFixed(2);
+      houseLvlEl.textContent=lvlHouse.toFixed(2);
+      zoneChange(W_HOUSE, houseSpawn.x, houseSpawn.y);
+    }, ()=>{});
+  }
+
+  function handleTrapdoor(){
+    if(world!==W_HOUSE || confirmOpen || npcOpen) return;
+    const near=inRangeTile(trapdoorTile,1.8);
+    if(!near){ trapPromptArmed=true; return; }
+    if(!trapPromptArmed) return;
+    trapPromptArmed=false;
+
+    openConfirm("Open trap door? Costs 1 energy.", ()=>{
+      if(energy<ENTRY_COST){ toastMsg("Not enough energy."); return; }
+      energy-=ENTRY_COST; updateHUD();
+      lvlHouseB = +(lvlHouseB + LEVEL_INC).toFixed(2);
+      zoneChange(W_HOUSE_B, houseBSpawn.x, houseBSpawn.y);
+    }, ()=>{});
+  }
+
+  // ===== Shield station =====
+  function handleShield(dt){
+    if(world!==W_MAIN) return;
+    if(!shieldAvailable){
+      shieldRespawn+=dt;
+      if(shieldRespawn>=SHIELD_RESPAWN){ shieldAvailable=true; shieldRespawn=0; }
+      return;
+    }
+    if(shields>=MAX_SHIELDS) return;
+    if(!inRangeTile(shieldTile, SHIELD_RANGE)) return;
+
+    shields+=1;
+    shieldAvailable=false;
+    shieldRespawn=0;
+    updateHUD();
+  }
+
+  // ===== NPC proximity =====
+  function handleNpc(){
+    if(world!==W_BANK || confirmOpen) return;
+    if(npcOpen) return;
+    const d=dist(player.x,player.y,npcCenter.x,npcCenter.y);
+    if(d<=2) openNpc();
+  }
+
+  // ===== Chests (confirm only) =====
+  function chestUsed(arr){ return arr.filter(v=>v!==null).length; }
+  function handleChests(){
+    if(world!==W_HOUSE || confirmOpen || npcOpen) return;
+    const t=playerTile();
+
+    const onC1 = (t.x===chest1Tile.x && t.y===chest1Tile.y);
+    const onC2 = (t.x===chest2Tile.x && t.y===chest2Tile.y);
+    const onC3 = (t.x===chest3Tile.x && t.y===chest3Tile.y);
+
+    if(!onC1) chestPromptArmed.c1=true;
+    if(!onC2) chestPromptArmed.c2=true;
+    if(!onC3) chestPromptArmed.c3=true;
+
+    if(onC1 && chestPromptArmed.c1){
+      chestPromptArmed.c1=false;
+      openConfirm("Open House 1 chest?", ()=>toastMsg(`House 1: ${chestUsed(chests.house1)}/${chestCap} slots used.`), ()=>{});
+    }
+    if(onC2 && chestPromptArmed.c2){
+      chestPromptArmed.c2=false;
+      openConfirm("Open House 2 chest?", ()=>toastMsg(`House 2: ${chestUsed(chests.house2)}/${chestCap} slots used.`), ()=>{});
+    }
+    if(onC3 && chestPromptArmed.c3){
+      chestPromptArmed.c3=false;
+      openConfirm("Open House 3 chest?", ()=>toastMsg(`House 3: ${chestUsed(chests.house3)}/${chestCap} slots used.`), ()=>{});
+    }
+  }
+
+  // ===== Day/Night in OverW zones =====
+  let dayT=0;
+  const dayLen=90;
+  function isOverW(){ return (world===W1 || world===W2 || world===W3 || world===W4); }
+  function nightAlpha(){
+    const phase = (dayT/dayLen) * Math.PI * 2;
+    const s = (Math.sin(phase - Math.PI/2)+1)/2;
+    return 0.10 + (1-s)*0.45;
+  }
+    // ===== Movement + attacks =====
+  let joyActive=false, joyId=null;
+  let joyCenter={x:0,y:0};
+  let joyVec={x:0,y:0};
+
+  const joyArea=document.getElementById("joyArea");
+  const joyStick=document.getElementById("joyStick");
 
   function setStick(dx,dy){
-    const max=48;
+    const max=55;
     const len=Math.hypot(dx,dy);
     let nx=dx, ny=dy;
     if(len>max){ nx=(dx/len)*max; ny=(dy/len)*max; }
-    joyStick.style.transform = `translate(${nx}px,${ny}px)`;
-    joyVec.x = nx/max; joyVec.y = ny/max;
-    joyHint.style.opacity = (Math.hypot(nx,ny)>8) ? 0 : 1;
+    joyStick.style.transform=`translate(${nx}px,${ny}px)`;
+    joyVec.x=nx/max; joyVec.y=ny/max;
   }
   function resetStick(){
-    joyStick.style.transform='translate(0px,0px)';
-    joyVec.x=0; joyVec.y=0; joyHint.style.opacity=1;
+    joyStick.style.transform="translate(0px,0px)";
+    joyVec.x=0; joyVec.y=0;
+    joyActive=false; joyId=null;
   }
-
-  joyArea.addEventListener('pointerdown', (e)=>{
+  joyArea.addEventListener("pointerdown",(e)=>{
     joyActive=true; joyId=e.pointerId;
     const r=joyArea.getBoundingClientRect();
     joyCenter.x=r.left+r.width/2;
@@ -339,332 +1047,448 @@
     joyArea.setPointerCapture(joyId);
     setStick(e.clientX-joyCenter.x, e.clientY-joyCenter.y);
   });
-  joyArea.addEventListener('pointermove', (e)=>{ if(!joyActive||e.pointerId!==joyId) return; setStick(e.clientX-joyCenter.x, e.clientY-joyCenter.y); });
-  function joyEnd(e){ if(!joyActive||e.pointerId!==joyId) return; joyActive=false; joyId=null; resetStick(); }
-  joyArea.addEventListener('pointerup', joyEnd);
-  joyArea.addEventListener('pointercancel', joyEnd);
-
-  // ===== HUD =====
-  function updateHUD(){
-    heartsEl.innerHTML = '';
-    const full = Math.floor(hp/2);
-    const half = (hp%2)===1;
-    for(let i=0;i<10;i++){
-      const s=document.createElement('span');
-      s.className='heart';
-      if(i<full) s.textContent='❤';
-      else if(i===full && half) s.textContent='💔';
-      else s.textContent='♡';
-      heartsEl.appendChild(s);
-    }
-
-    shieldsEl.innerHTML='';
-    for(let i=0;i<maxShields;i++){
-      const s=document.createElement('span');
-      s.className='shield';
-      s.textContent = (i<shields) ? '🛡️' : '▫️';
-      shieldsEl.appendChild(s);
-    }
-
-    energyFill.style.width = `${(energy/maxEnergy)*100}%`;
-
-    const centered = temp/10; // -1..+1
-    const w = Math.abs(centered)*50;
-    if(temp>=0){ tempFill.style.left='50%'; tempFill.style.width = w+'%'; }
-    else { tempFill.style.left=(50-w)+'%'; tempFill.style.width = w+'%'; }
-    const tnorm = clamp((temp+10)/20,0,1);
-    const r = Math.round(40 + 215*tnorm);
-    const b = Math.round(255 - 215*tnorm);
-    tempFill.style.background = `rgb(${r},80,${b})`;
-  }
-  updateHUD();
-
-  // Bed
-  bedBtn.addEventListener('click', ()=>{
-    hp=maxHP; energy=maxEnergy; temp=defaultTemp; updateHUD();
+  joyArea.addEventListener("pointermove",(e)=>{
+    if(!joyActive || e.pointerId!==joyId) return;
+    setStick(e.clientX-joyCenter.x, e.clientY-joyCenter.y);
   });
+  joyArea.addEventListener("lostpointercapture", ()=> resetStick());
+  joyArea.addEventListener("pointerup",(e)=>{ if(e.pointerId===joyId) resetStick(); });
+  joyArea.addEventListener("pointercancel",(e)=>{ if(e.pointerId===joyId) resetStick(); });
+  addEventListener("pointerup", ()=>{ if(joyActive) resetStick(); }, {passive:true});
+  addEventListener("pointercancel", ()=>{ if(joyActive) resetStick(); }, {passive:true});
+  document.addEventListener("visibilitychange", ()=>{ if(document.hidden) resetStick(); });
 
-  // Exit
-  exitBtn.addEventListener('click', ()=>{
-    if(confirmOpen) return;
-    openConfirm("Exit this zone and return to mainland respawn?",
-      ()=>{ setWorld(W_MAIN); player.x=spawn.x; player.y=spawn.y; },
-      ()=>{}
-    );
-  });
-
-  // ===== Gameplay helpers =====
-  function tryCollectShield(){
-    if(currentWorld!==W_MAIN) return;
-    if(!shieldStationAvailable) return;
-    if(shields>=maxShields) return;
-
-    const ss=tileCenter(shieldStationTile);
-    if(dist(player.x,player.y,ss.x,ss.y)>2) return;
-
-    shields = Math.min(maxShields, shields+1);
-    shieldStationAvailable=false;
-    shieldRespawn=0;
-    updateHUD();
+  function distPointToRect(px,py,rx,ry,rw,rh){
+    const cx=clamp(px,rx,rx+rw);
+    const cy=clamp(py,ry,ry+rh);
+    return Math.hypot(px-cx, py-cy);
+  }
+  function resolveCircleRect(px,py,r,rect){
+    const cx=clamp(px, rect.x, rect.x+rect.w);
+    const cy=clamp(py, rect.y, rect.y+rect.h);
+    let dx=px-cx, dy=py-cy;
+    const d=Math.hypot(dx,dy);
+    if(d>=r || d===0) return {x:px,y:py};
+    const push=(r-d);
+    dx/=d; dy/=d;
+    return {x:px+dx*push, y:py+dy*push};
   }
 
-  let bankPromptArmed=true;
-  function handleBank(){
-    if(currentWorld!==W_MAIN) return;
-    const b=tileCenter(bankTile);
-    const near = dist(player.x,player.y,b.x,b.y)<=2;
+  // Attacks
+  const swing={active:false,t:0,dur:0.18};
+  function offCdReady(nowSec){ return nowSec >= lastAtkOff + cdOff(); }
+  function mainCdReady(nowSec){ return nowSec >= lastAtkMain + cdMain(); }
 
-    if(!near){ bankPromptArmed=true; return; }
-    if(!bankPromptArmed) return;
-    if(confirmOpen) return;
-
-    bankPromptArmed=false;
-    openConfirm("Enter Bank? Costs 1 energy.",
-      ()=>{
-        if(energy<1){
-          openConfirm("Not enough energy to enter the Bank.", ()=>{}, ()=>{});
-          return;
-        }
-        energy-=1; updateHUD();
-        setWorld(W_BANK);
-        player.x=bankSpawn.x; player.y=bankSpawn.y;
-      },
-      ()=>{}
-    );
+  function inTreeRange(){
+    if(world!==W1 || !treeNode.alive) return false;
+    return distPointToRect(player.x,player.y,treeNode.x,treeNode.y,treeNode.w,treeNode.h) <= SWING_RANGE;
+  }
+  function inJellyRange(){
+    if(!isOverW() || !jelly.alive) return false;
+    return distPointToRect(player.x,player.y,jelly.x,jelly.y,jelly.w,jelly.h) <= SWING_RANGE;
   }
 
-  function checkPortals(){
-    if(currentWorld!==W_MAIN) return;
-    const px=Math.floor(player.x), py=Math.floor(player.y);
-
-    if(!confirmOpen && px===overW1Tile.x && py===overW1Tile.y){
-      openConfirm("Enter OverW1?",
-        ()=>{ setWorld(W1); player.x=overSpawn.x; player.y=overSpawn.y; },
-        ()=>{ player.x=clamp(player.x+0.6,0.5,WORLD-0.5); }
-      );
-    }
-
-    if(!confirmOpen && px===overW2Tile.x && py===overW2Tile.y){
-      openConfirm(
-  "Enter OverW2? (Dev switches - disabled for now)",
-  () => {
-    // OK intentionally does nothing for now
-  },
-  () => {
-    // Cancel works and nudges you off the portal tile
-    player.x = clamp(player.x + 0.6, 0.5, WORLD - 0.5);
-  }
-);
-
-// Disable only OK, keep Cancel enabled
-confirmOk.disabled = true;
-confirmCancel.disabled = false;
-}
-
-    if(!confirmOpen && px===overW3Tile.x && py===overW3Tile.y){
-      openConfirm("Enter OverW3?",
-        ()=>{ setWorld(W3); player.x=overSpawn.x; player.y=overSpawn.y; },
-        ()=>{ player.x=clamp(player.x+0.6,0.5,WORLD-0.5); }
-      );
-    }
-  }
-
-  function canAttack(){
+  function canAttack(slot, nowSec){
     if(energy<SWING_COST) return false;
+    if(slot==="offhand" && !offCdReady(nowSec)) return false;
+    if(slot==="mainhand" && !mainCdReady(nowSec)) return false;
 
-    if(currentWorld===W_MAIN){
-      const b=tileCenter(bankTile);
-      const s=tileCenter(shieldStationTile);
-      return dist(player.x,player.y,b.x,b.y)<=2 || dist(player.x,player.y,s.x,s.y)<=2;
+    if(world===W_MAIN){
+      return inRangeTile(bankTile,2) || inRangeTile(shieldTile,2) || inRangeTile(houseTile,2);
     }
-    if(currentWorld===W1 || currentWorld===W3){
-      if(!jelly.alive) return false;
-      const d=distPointToRect(player.x,player.y,jelly.x,jelly.y,jelly.w,jelly.h);
-      return d<=jelly.affectedRange;
-    }
+    if(world===W_HOUSE || world===W_HOUSE_B) return false;
+    if(world===W1) return inTreeRange() || inJellyRange();
+    if(isOverW()) return inJellyRange();
     return false;
   }
 
-  // simple swing animation
-  const swing = {active:false,t:0,dur:0.18};
-  function startAttack(){
-    if(!canAttack()) return;
-    energy-=SWING_COST; updateHUD();
-    swing.active=true; swing.t=0;
-
-    if(currentWorld===W1 || currentWorld===W3){
-      const d=distPointToRect(player.x,player.y,jelly.x,jelly.y,jelly.w,jelly.h);
-      if(d<=jelly.affectedRange){
-        jelly.hp-=SWING_DAMAGE;
-        if(jelly.hp<=0){ jelly.hp=0; jelly.alive=false; }
-      }
-    }
+  function hitTree(slot){
+    if(!inTreeRange()) return false;
+    const dmg = (slot==="mainhand") ? skillDmgMain() : skillDmgOff();
+    treeNode.hp -= Math.max(0,dmg);
+    addWoodXp(Math.max(0,dmg) * 10);
+    if(treeNode.hp<=0){ treeNode.hp=0; treeNode.alive=false; }
+    return true;
+  }
+  function hitJelly(slot){
+    if(!inJellyRange()) return false;
+    const dmg = (slot==="mainhand") ? dmgMain() : dmgOff();
+    jelly.hp -= Math.max(0,dmg);
+    if(jelly.hp<=0){ jelly.hp=0; jelly.alive=false; }
+    return true;
   }
 
-  atk1.addEventListener('pointerdown',(e)=>{e.preventDefault(); startAttack();},{passive:false});
-  atk2.addEventListener('pointerdown',(e)=>{e.preventDefault(); startAttack();},{passive:false});
+  function doAttack(slot){
+    const nowSec=performance.now()/1000;
+    if(!canAttack(slot, nowSec)) return;
 
-  // ===== Update loop =====
-  let last=performance.now();
-  function update(dt){
-    if(overlay.classList.contains('open') || confirmOpen) return;
+    energy-=SWING_COST; updateHUD();
+    if(slot==="offhand") lastAtkOff=nowSec; else lastAtkMain=nowSec;
+    swing.active=true; swing.t=0;
 
-    if(!shieldStationAvailable){
-      shieldRespawn += dt;
-      if(shieldRespawn >= SHIELD_RESPAWN_TIME){
-        shieldStationAvailable=true;
-        shieldRespawn=0;
-      }
-    }
+    if(world===W1 && inTreeRange()) { hitTree(slot); return; }
+    hitJelly(slot);
+  }
 
-    // movement
+  atk1.addEventListener("pointerdown",(e)=>{e.preventDefault();doAttack("offhand");},{passive:false});
+  atk2.addEventListener("pointerdown",(e)=>{e.preventDefault();doAttack("mainhand");},{passive:false});
+
+  bed.addEventListener("pointerdown",(e)=>{
+    e.preventDefault();
+    hp=MAX_HP; energy=MAX_ENERGY; temp=DEFAULT_TEMP;
+    updateHUD();
+  }, {passive:false});
+
+  function updateButtons(nowSec){
+    const offOK = canAttack("offhand", nowSec);
+    const mainOK= canAttack("mainhand", nowSec);
+    atk1.classList.toggle("disabled", !offOK);
+    atk2.classList.toggle("disabled", !mainOK);
+    setAttackButtons(nowSec);
+  }
+
+  function movePlayer(dt){
     const dead=0.08;
     let jx=Math.abs(joyVec.x)<dead?0:joyVec.x;
     let jy=Math.abs(joyVec.y)<dead?0:joyVec.y;
     const mag=Math.hypot(jx,jy);
     if(mag>1){ jx/=mag; jy/=mag; }
 
-    player.vx = jx*player.speed;
-    player.vy = jy*player.speed;
-    player.x = clamp(player.x + player.vx*dt, 0.5, WORLD-0.5);
-    player.y = clamp(player.y + player.vy*dt, 0.5, WORLD-0.5);
+    // uses currentSpeed()
+    let nx=clamp(player.x + jx*currentSpeed()*dt, 0.5, WORLD-0.5);
+    let ny=clamp(player.y + jy*currentSpeed()*dt, 0.5, WORLD-0.5);
 
-    const vmag=Math.hypot(player.vx,player.vy);
-    if(vmag>0.05){ player.fx=player.vx/vmag; player.fy=player.vy/vmag; }
+    if(isOverW() && jelly && jelly.alive){
+      const res=resolveCircleRect(nx,ny,playerRadius,jelly);
+      nx=res.x; ny=res.y;
+    }
+    player.x=nx; player.y=ny;
 
-    // swing progress
-   if(swing.active){
-      swing.t += dt/swing.dur;
-      if(swing.t>=1){ swing.t=1; swing.active=false; }
+    if(mag>0.05){
+      const n=1/Math.max(1e-6,mag);
+      player.fx=jx*n; player.fy=jy*n;
+    }
+  }
+
+  // ===== Camera =====
+  function tilePx(){ return Math.max(28, Math.min(innerWidth, innerHeight) / 10); }
+  function cam(){
+    const tpx=tilePx();
+    const viewW=Math.max(10, Math.ceil(innerWidth / tpx));
+    const viewH=Math.max(10, Math.ceil(innerHeight / tpx));
+    const camX=clamp(player.x - viewW/2, 0, WORLD - viewW);
+    const camY=clamp(player.y - viewH/2, 0, WORLD - viewH);
+    return {tpx, viewW, viewH, camX, camY};
+  }
+  function w2s(wx,wy,c){ return {x:(wx-c.camX)*c.tpx, y:(wy-c.camY)*c.tpx}; }
+
+  // ===== Render helpers =====
+  function drawLevelText(x,y,t,txt){
+    ctx.fillStyle="rgba(0,0,0,.55)";
+    ctx.fillRect(x+t*0.05,y+t*0.72,t*0.90,t*0.22);
+    ctx.fillStyle="rgba(234,255,243,.95)";
+    ctx.font=`${Math.max(10,t*0.18)}px system-ui`;
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(txt, x+t/2, y+t*0.83);
+  }
+  function drawTreeDoor(x,y,t){
+    ctx.fillStyle="rgba(255,255,255,.04)"; ctx.fillRect(x,y,t,t);
+    ctx.fillStyle="#2f6b2f"; ctx.beginPath(); ctx.arc(x+t*0.5,y+t*0.42,t*0.38,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle="#5a3a1e"; ctx.fillRect(x+t*0.40,y+t*0.42,t*0.20,t*0.52);
+    ctx.fillStyle="#3b2412"; ctx.fillRect(x+t*0.44,y+t*0.68,t*0.12,t*0.22);
+    ctx.strokeStyle="#000"; ctx.lineWidth=1; ctx.strokeRect(x,y,t,t);
+  }
+  function drawEarth(x,y,t){
+    ctx.fillStyle="rgba(255,255,255,.04)"; ctx.fillRect(x,y,t,t);
+    ctx.fillStyle="#1e40af"; ctx.beginPath(); ctx.arc(x+t/2,y+t/2,t*0.46,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle="#16a34a"; ctx.beginPath();
+    ctx.arc(x+t*0.42,y+t*0.44,t*0.14,0,Math.PI*2);
+    ctx.arc(x+t*0.58,y+t*0.56,t*0.12,0,Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle="#000"; ctx.lineWidth=1; ctx.strokeRect(x,y,t,t);
+  }
+  function drawMountain(x,y,t){
+    ctx.fillStyle="rgba(255,255,255,.04)"; ctx.fillRect(x,y,t,t);
+    ctx.fillStyle="#6b7280"; ctx.beginPath();
+    ctx.moveTo(x+t*0.12,y+t*0.92); ctx.lineTo(x+t*0.52,y+t*0.14); ctx.lineTo(x+t*0.90,y+t*0.92);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle="#000"; ctx.lineWidth=1; ctx.strokeRect(x,y,t,t);
+  }
+  function drawCave(x,y,t){
+    ctx.fillStyle="rgba(255,255,255,.04)"; ctx.fillRect(x,y,t,t);
+    ctx.fillStyle="#374151"; ctx.fillRect(x+t*0.10,y+t*0.18,t*0.80,t*0.76);
+    ctx.fillStyle="#000"; ctx.beginPath(); ctx.arc(x+t*0.50,y+t*0.70,t*0.26,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle="#000"; ctx.lineWidth=1; ctx.strokeRect(x,y,t,t);
+  }
+  function drawHouseIcon(x,y,t){
+    ctx.fillStyle="rgba(255,255,255,.04)"; ctx.fillRect(x,y,t,t);
+    ctx.fillStyle="#8b5e34";
+    ctx.beginPath();
+    ctx.moveTo(x+t*0.12,y+t*0.52);
+    ctx.lineTo(x+t*0.50,y+t*0.18);
+    ctx.lineTo(x+t*0.88,y+t*0.52);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle="#d1a374";
+    ctx.fillRect(x+t*0.22,y+t*0.52,t*0.56,t*0.40);
+    ctx.fillStyle="#3b2412";
+    ctx.fillRect(x+t*0.46,y+t*0.66,t*0.12,t*0.26);
+    ctx.strokeStyle="#000"; ctx.lineWidth=1; ctx.strokeRect(x,y,t,t);
+  }
+  function drawTrapdoor(x,y,t){
+    ctx.fillStyle="rgba(255,255,255,.04)"; ctx.fillRect(x,y,t,t);
+    ctx.fillStyle="rgba(120,53,15,.65)";
+    ctx.fillRect(x+t*0.18,y+t*0.22,t*0.64,t*0.64);
+    ctx.fillStyle="rgba(0,0,0,.75)";
+    ctx.fillRect(x+t*0.22,y+t*0.52,t*0.56,t*0.10);
+    ctx.strokeStyle="#000"; ctx.lineWidth=1; ctx.strokeRect(x,y,t,t);
+  }
+  function drawPurpleSpawnTile(tileX,tileY,c){
+    const s=w2s(tileX,tileY,c);
+    ctx.fillStyle="rgba(168,85,247,.55)";
+    ctx.fillRect(s.x,s.y,c.tpx,c.tpx);
+    ctx.strokeStyle="#000"; ctx.lineWidth=1;
+    ctx.strokeRect(s.x,s.y,c.tpx,c.tpx);
+  }
+  function drawNodeHpBar(x,y,t,cur,max){
+    const w=t*0.90, h=t*0.12;
+    const bx=x+t*0.05, by=y-t*0.18;
+    ctx.fillStyle="rgba(0,0,0,.55)";
+    ctx.fillRect(bx,by,w,h);
+    ctx.fillStyle="rgba(52,211,153,.95)";
+    ctx.fillRect(bx,by,w*(cur/max),h);
+    ctx.strokeStyle="#000"; ctx.lineWidth=1;
+    ctx.strokeRect(bx,by,w,h);
+  }
+
+  function drawBicycleUnder(px,py,size){
+    // simple bike: two wheels + frame
+    const r=Math.max(4,size*0.14);
+    const y=py + size*0.22;
+    const x1=px - size*0.22;
+    const x2=px + size*0.22;
+
+    ctx.strokeStyle="rgba(234,255,243,.85)";
+    ctx.lineWidth=Math.max(2,size*0.05);
+    ctx.beginPath();
+    ctx.arc(x1,y,r,0,Math.PI*2);
+    ctx.arc(x2,y,r,0,Math.PI*2);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(x1,y);
+    ctx.lineTo(px,y-r*0.6);
+    ctx.lineTo(x2,y);
+    ctx.lineTo(px,y);
+    ctx.stroke();
+  }
+
+  function drawStickFigure(px,py,size){
+    // trailer rocket behind
+    if(transportEquip.trailer){
+      ctx.font=`${Math.max(12,size*0.30)}px system-ui`;
+      ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText("🚀", px - size*0.55, py + size*0.10);
     }
 
-    // button gating
-    const enabled=canAttack();
-    atk1.classList.toggle('disabled', !enabled);
-    atk2.classList.toggle('disabled', !enabled);
+    // bike mount under
+    if(transportEquip.bike){
+      drawBicycleUnder(px,py,size);
+    }
 
-    handleBank();
-    tryCollectShield();
-    checkPortals();
+    const headR = Math.max(3, size*0.12);
+    const bodyL = size*0.28;
+    const armL  = size*0.22;
+    const legL  = size*0.24;
 
-    posText.textContent = `${player.x.toFixed(1)}, ${player.y.toFixed(1)}`;
+    ctx.strokeStyle="rgba(234,255,243,.95)";
+    ctx.lineWidth=Math.max(2, size*0.06);
+    ctx.lineCap="round";
+
+    ctx.beginPath(); ctx.arc(px, py - bodyL*0.55, headR, 0, Math.PI*2); ctx.stroke();
+
+    ctx.beginPath(); ctx.moveTo(px, py - bodyL*0.40); ctx.lineTo(px, py + bodyL*0.35); ctx.stroke();
+
+    const ax = player.fx * armL*0.30;
+    const ay = player.fy * armL*0.30;
+    ctx.beginPath();
+    ctx.moveTo(px - armL*0.55, py - bodyL*0.18);
+    ctx.lineTo(px + armL*0.55 + ax, py - bodyL*0.18 + ay);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(px, py + bodyL*0.35);
+    ctx.lineTo(px - legL*0.45, py + bodyL*0.35 + legL);
+    ctx.moveTo(px, py + bodyL*0.35);
+    ctx.lineTo(px + legL*0.45, py + bodyL*0.35 + legL);
+    ctx.stroke();
   }
+
   function draw(){
-    const m=metrics();
-    ctx.clearRect(0,0,m.w,m.h);
+    const c=cam();
+    ctx.clearRect(0,0,innerWidth,innerHeight);
 
-    // camera
-    const camX = clamp(player.x - VIEW/2, 0, WORLD - VIEW);
-    const camY = clamp(player.y - VIEW/2, 0, WORLD - VIEW);
+    const startX=floor(c.camX), startY=floor(c.camY);
 
-    const w2s = (wx,wy)=>({ x:(wx-camX)*m.tilePx, y:(wy-camY)*m.tilePx });
-
-    ctx.save();
-    ctx.translate(m.ox, m.oy);
-
-    // tiles
-    const startX=Math.floor(camX), startY=Math.floor(camY);
-    for(let ty=startY; ty<startY+VIEW; ty++){
-      for(let tx=startX; tx<startX+VIEW; tx++){
-        const s=w2s(tx,ty);
-        ctx.fillStyle="#1f7a3a";
-        ctx.fillRect(s.x,s.y,m.tilePx,m.tilePx);
-        ctx.strokeStyle="#000";
-        ctx.lineWidth=1;
-        ctx.strokeRect(s.x,s.y,m.tilePx,m.tilePx);
+    for(let ty=startY; ty<startY+c.viewH; ty++){
+      for(let tx=startX; tx<startX+c.viewW; tx++){
+        const s=w2s(tx,ty,c);
+        ctx.fillStyle = (world===W_HOUSE_B) ? "#8b5a2b" : "#1f7a3a";
+        ctx.fillRect(s.x,s.y,c.tpx,c.tpx);
+        ctx.strokeStyle="#000"; ctx.lineWidth=1;
+        ctx.strokeRect(s.x,s.y,c.tpx,c.tpx);
       }
     }
 
-    // bank tint proof
-    if(currentWorld===W_BANK){
-      ctx.fillStyle="rgba(234,179,8,.18)";
-      ctx.fillRect(0,0,m.viewPx,m.viewPx);
-    }
+    // purple spawn tiles
+    if(world===W_MAIN) drawPurpleSpawnTile(spawnTile.x, spawnTile.y, c);
+    if(world===W1) drawPurpleSpawnTile(spawnTileW1.x, spawnTileW1.y, c);
+    if(world===W2) drawPurpleSpawnTile(spawnTileW2.x, spawnTileW2.y, c);
+    if(world===W3) drawPurpleSpawnTile(spawnTileW3.x, spawnTileW3.y, c);
+    if(world===W4) drawPurpleSpawnTile(spawnTileW4.x, spawnTileW4.y, c);
+    if(world===W_BANK) drawPurpleSpawnTile(bankSpawnTile.x, bankSpawnTile.y, c);
+    if(world===W_HOUSE) drawPurpleSpawnTile(houseSpawnTile.x, houseSpawnTile.y, c);
+    if(world===W_HOUSE_B) drawPurpleSpawnTile(houseSpawnTile.x, houseSpawnTile.y, c);
 
-    // mainland markers
-    if(currentWorld===W_MAIN){
-      drawTileTag(overW1Tile,"W1","rgba(96,165,250,.22)");
-      drawTileTag(overW2Tile,"W2","rgba(96,165,250,.22)");
-      drawTileTag(overW3Tile,"W3","rgba(96,165,250,.22)");
-      drawTileTag(bankTile,"B","rgba(234,179,8,.35)");
+    if(world===W_MAIN){
+      let s;
 
-      // shield station
-      const ss=w2s(shieldStationTile.x, shieldStationTile.y);
-      ctx.fillStyle = shieldStationAvailable ? "rgba(255,255,255,.06)" : "rgba(255,255,255,.02)";
-      ctx.fillRect(ss.x,ss.y,m.tilePx,m.tilePx);
-      ctx.strokeStyle="#000"; ctx.strokeRect(ss.x,ss.y,m.tilePx,m.tilePx);
-      ctx.globalAlpha = shieldStationAvailable ? 1 : 0.35;
-      ctx.font = `${Math.max(12,m.tilePx*0.60)}px system-ui`;
-      ctx.textAlign="center"; ctx.textBaseline="middle";
+      s=w2s(overW1Tile.x,overW1Tile.y,c); drawTreeDoor(s.x,s.y,c.tpx); drawLevelText(s.x,s.y,c.tpx,`Lv ${lvlW1.toFixed(2)}`);
+      s=w2s(overW2Tile.x,overW2Tile.y,c); drawEarth(s.x,s.y,c.tpx);    drawLevelText(s.x,s.y,c.tpx,`Lv ${lvlW2.toFixed(2)}`);
+      s=w2s(overW3Tile.x,overW3Tile.y,c); drawMountain(s.x,s.y,c.tpx); drawLevelText(s.x,s.y,c.tpx,`Lv ${lvlW3.toFixed(2)}`);
+      s=w2s(overW4Tile.x,overW4Tile.y,c); drawCave(s.x,s.y,c.tpx);     drawLevelText(s.x,s.y,c.tpx,`Lv ${lvlW4.toFixed(2)}`);
+
+      // bank tile
+      s=w2s(bankTile.x,bankTile.y,c);
+      ctx.fillStyle="rgba(234,179,8,.26)";
+      ctx.fillRect(s.x,s.y,c.tpx,c.tpx);
+      ctx.strokeStyle="#000"; ctx.strokeRect(s.x,s.y,c.tpx,c.tpx);
+      ctx.fillStyle="rgba(0,0,0,.70)";
+      ctx.fillRect(s.x+c.tpx*0.18, s.y+c.tpx*0.26, c.tpx*0.64, c.tpx*0.56);
       ctx.fillStyle="rgba(234,255,243,.95)";
-      ctx.fillText("🛡️", ss.x+m.tilePx/2, ss.y+m.tilePx/2);
+      ctx.font=`${Math.max(10,c.tpx*0.28)}px system-ui`;
+      ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText("BANK", s.x+c.tpx/2, s.y+c.tpx/2);
+      drawLevelText(s.x,s.y,c.tpx,`Lv ${lvlBank.toFixed(2)}`);
+
+      // house tile
+      s=w2s(houseTile.x,houseTile.y,c);
+      drawHouseIcon(s.x,s.y,c.tpx);
+      drawLevelText(s.x,s.y,c.tpx,`Lv ${lvlHouse.toFixed(2)}`);
+
+      // shield tile
+      s=w2s(shieldTile.x,shieldTile.y,c);
+      ctx.fillStyle=shieldAvailable ? "rgba(255,255,255,.06)" : "rgba(255,255,255,.02)";
+      ctx.fillRect(s.x,s.y,c.tpx,c.tpx);
+      ctx.strokeStyle="#000"; ctx.strokeRect(s.x,s.y,c.tpx,c.tpx);
+      ctx.globalAlpha=shieldAvailable ? 1 : 0.35;
+      ctx.font=`${Math.max(12,c.tpx*0.60)}px system-ui`;
+      ctx.fillStyle="rgba(234,255,243,.95)";
+      ctx.fillText("🛡️", s.x+c.tpx/2, s.y+c.tpx/2);
       ctx.globalAlpha=1;
     }
 
-    // jelly
-    if((currentWorld===W1 || currentWorld===W3) && jelly){
-      const s=w2s(jelly.x, jelly.y);
-      const w=jelly.w*m.tilePx, h=jelly.h*m.tilePx;
-      ctx.fillStyle = jelly.alive ? "rgba(59,130,246,.75)" : "rgba(59,130,246,.20)";
+    if(world===W_BANK){
+      ctx.fillStyle="rgba(234,179,8,.14)";
+      ctx.fillRect(0,0,innerWidth,innerHeight);
+      const s=w2s(npcTile.x,npcTile.y,c);
+      ctx.fillStyle="rgba(255,255,255,.06)";
+      ctx.fillRect(s.x,s.y,c.tpx,c.tpx);
+      ctx.strokeStyle="#000"; ctx.lineWidth=2;
+      ctx.strokeRect(s.x,s.y,c.tpx,c.tpx);
+      ctx.font=`${Math.max(12,c.tpx*0.60)}px system-ui`;
+      ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillStyle="rgba(234,255,243,.95)";
+      ctx.fillText("🧑‍💼", s.x+c.tpx/2, s.y+c.tpx/2);
+    }
+
+    if(world===W_HOUSE){
+      const td=w2s(trapdoorTile.x,trapdoorTile.y,c);
+      drawTrapdoor(td.x,td.y,c.tpx);
+    }
+
+    if(world===W1){
+      const s=w2s(treeNode.x,treeNode.y,c);
+      ctx.fillStyle=treeNode.alive ? "rgba(34,197,94,.55)" : "rgba(34,197,94,.15)";
+      ctx.fillRect(s.x,s.y,c.tpx,c.tpx);
+      ctx.strokeStyle="#000"; ctx.lineWidth=2; ctx.strokeRect(s.x,s.y,c.tpx,c.tpx);
+      ctx.fillStyle="rgba(234,255,243,.95)";
+      ctx.font=`${Math.max(12,c.tpx*0.46)}px system-ui`;
+      ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText("🌲", s.x+c.tpx/2, s.y+c.tpx/2);
+      if(treeNode.alive) drawNodeHpBar(s.x,s.y,c.tpx,treeNode.hp,treeNode.max);
+    }
+
+    if(isOverW() && jelly){
+      const s=w2s(jelly.x,jelly.y,c);
+      const w=jelly.w*c.tpx, h=jelly.h*c.tpx;
+      ctx.fillStyle=jelly.alive ? "rgba(59,130,246,.75)" : "rgba(59,130,246,.18)";
       ctx.fillRect(s.x,s.y,w,h);
       ctx.strokeStyle="#000"; ctx.lineWidth=2; ctx.strokeRect(s.x,s.y,w,h);
       ctx.fillStyle="rgba(234,255,243,.95)";
-      ctx.font = `${Math.max(12,m.tilePx*0.34)}px system-ui`;
+      ctx.font=`${Math.max(12,c.tpx*0.34)}px system-ui`;
       ctx.textAlign="center"; ctx.textBaseline="middle";
       ctx.fillText(`Jelly ${jelly.hp}/50`, s.x+w/2, s.y+h/2);
     }
 
-    // player (simple guaranteed visible)
-    const p=w2s(player.x, player.y);
-    const ps=m.tilePx*PLAYER_SCALE;
-    ctx.fillStyle="rgba(234,255,243,.92)";
-    ctx.fillRect(p.x-ps/2, p.y-ps/2, ps, ps);
-    ctx.strokeStyle="#000"; ctx.lineWidth=2;
-    ctx.strokeRect(p.x-ps/2, p.y-ps/2, ps, ps);
+    // player + swing
+    {
+      const p=w2s(player.x,player.y,c);
+      drawStickFigure(p.x, p.y, c.tpx*PLAYER_SCALE);
 
-    // swing arc
+      if(swing.active){
+        const base=Math.atan2(player.fy, player.fx);
+        const span=Math.PI*0.9;
+        const cur=(base-span/2) + span*swing.t;
+        const r=c.tpx*1.15;
+        ctx.strokeStyle=`rgba(234,255,243,${(1-swing.t)*0.9})`;
+        ctx.lineWidth=Math.max(4,c.tpx*0.18);
+        ctx.lineCap="round";
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,r,cur-span*0.25,cur);
+        ctx.stroke();
+      }
+    }
+
+    if(isOverW()){
+      ctx.fillStyle=`rgba(0,0,0,${nightAlpha().toFixed(3)})`;
+      ctx.fillRect(0,0,innerWidth,innerHeight);
+    }
+  }
+
+  // ===== Main loop =====
+  let last=performance.now();
+  function step(now){
+    const dt=Math.min(0.05, (now-last)/1000);
+    last=now;
+    const nowSec=now/1000;
+
+    if(isOverW()) dayT += dt;
+
+    const uiBlock = overlays.some(ov=>ov.classList.contains("open"));
+    if(!uiBlock) movePlayer(dt);
+
     if(swing.active){
-      const base=Math.atan2(player.fy, player.fx);
-      const span=Math.PI*0.9;
-      const cur=(base-span/2) + span*swing.t;
-      const r=m.tilePx*1.25;
-      ctx.strokeStyle=`rgba(234,255,243,${(1-swing.t)*0.9})`;
-      ctx.lineWidth=Math.max(4,m.tilePx*0.18);
-      ctx.lineCap="round";
-      ctx.beginPath();
-      ctx.arc(p.x,p.y,r,cur-span*0.25,cur);
-      ctx.stroke();
+      swing.t += dt/swing.dur;
+      if(swing.t>=1){ swing.t=1; swing.active=false; }
     }
 
-    ctx.restore();
+    handleShield(dt);
+    handleBank();
+    handleHouse();
+    handleEntrances();
+    handleNpc();
+    handleTrapdoor();
+    handleChests();
 
-    function drawTileTag(t, tag, fill){
-      const s=w2s(t.x,t.y);
-      ctx.fillStyle=fill;
-      ctx.fillRect(s.x,s.y,m.tilePx,m.tilePx);
-      ctx.strokeStyle="#000"; ctx.lineWidth=1; ctx.strokeRect(s.x,s.y,m.tilePx,m.tilePx);
-      ctx.fillStyle="rgba(234,255,243,.95)";
-      ctx.font=`${Math.max(10,m.tilePx*0.34)}px system-ui`;
-      ctx.textAlign="center"; ctx.textBaseline="middle";
-      ctx.fillText(tag, s.x+m.tilePx/2, s.y+m.tilePx/2);
-    }
-  }
-
-  // init
-  setWorld(W_MAIN);
-  player.x=spawn.x; player.y=spawn.y;
-  posText.textContent = `${player.x.toFixed(1)}, ${player.y.toFixed(1)}`;
-  updateHUD();
-
-  function loop(t){
-    const dt=Math.min(0.05,(t-last)/1000);
-    last=t;
-    update(dt);
+    updateButtons(nowSec);
     draw();
-    requestAnimationFrame(loop);
+
+    requestAnimationFrame(step);
   }
-  requestAnimationFrame(loop);
+  requestAnimationFrame(step);
+
 })();
 </script>
 </body>
 </html>
+```0
