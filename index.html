@@ -22,7 +22,7 @@ html,body{margin:0;height:100%;background:#06130b;color:var(--ui-text);font-fami
 </style>
 // CHUNK 2: CSS PART 2
 <style>
-#buttons{position:fixed;left:14px;bottom:65px;display:flex;gap:12px;z-index:99999;}
+#buttons{position:fixed;left:14px;bottom:-65px;display:flex;gap:12px;z-index:99999;}
 #buttons .btn.attack{width:80px;height:75px;display:flex;align-items:center;justify-content:center;background:rgba(255,0,0,.6);border-radius:50%;border:3px solid #fff;}
 #atk1::before,#atk2::before{content:"👊";font-size:22px;}
 #menuBtn,#connectBtn{position:fixed;top:10px;z-index:10000;height:48px;border-radius:14px;border:1px solid var(--ui-border);background:var(--ui-bg);color:var(--ui-text);font-weight:950;backdrop-filter:blur(6px);cursor:pointer}
@@ -855,7 +855,7 @@ function draw(){
   ctx.save();ctx.shadowColor="rgba(52,211,153,0.60)";ctx.shadowBlur=10;
   ctx.save();ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(ps.sx,ps.sy,6,0,Math.PI*2);ctx.fill();ctx.restore();
   ctx.fillStyle="rgba(183,247,218,0.55)";ctx.font="bold 11px system-ui";ctx.textAlign="left";
-  ctx.fillText(timeOfDay+" | "+getSeason()+" | "+(isNaN(tempgauge)?DEF_TEMP:tempgauge)+"°",14,innerHeight-28);
+  ctx.fillText(timeOfDay+" | "+getSeason()+" | "+(isNaN(tempgauge)?DEF_TEMP:tempgauge)+"°",14,innerHeight-200);
   ctx.save();ctx.globalAlpha=1;ctx.fillStyle="#fff";ctx.font="bold 13px system-ui";ctx.textAlign="right";ctx.textBaseline="top";ctx.shadowColor="rgba(0,0,0,0.8)";ctx.shadowBlur=4;
   ctx.fillText("X:"+player.x.toFixed(1)+" Y:"+player.y.toFixed(1),innerWidth-10,72);ctx.shadowBlur=0;ctx.restore();
   ctx.save();ctx.globalAlpha=1;ctx.fillStyle="#fff";ctx.font="bold 13px system-ui";ctx.textAlign="right";ctx.textBaseline="top";ctx.shadowColor="rgba(0,0,0,0.8)";ctx.shadowBlur=4;
