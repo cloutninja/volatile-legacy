@@ -855,7 +855,7 @@ function draw(){
   ctx.save();ctx.shadowColor="rgba(52,211,153,0.60)";ctx.shadowBlur=10;
   ctx.save();ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(ps.sx,ps.sy,6,0,Math.PI*2);ctx.fill();ctx.restore();
   ctx.fillStyle="rgba(183,247,218,0.55)";ctx.font="bold 11px system-ui";ctx.textAlign="left";
-  ctx.fillText(timeOfDay+" | "+getSeason()+" | "+(isNaN(tempgauge)?DEF_TEMP:tempgauge)+"°",14,innerHeight-200);
+  ctx.fillText(timeOfDay+" | "+getSeason()+" | "+(isNaN(tempgauge)?DEF_TEMP:tempgauge)+"°",14,innerHeight-28);
   ctx.save();ctx.globalAlpha=1;ctx.fillStyle="#fff";ctx.font="bold 13px system-ui";ctx.textAlign="right";ctx.textBaseline="top";ctx.shadowColor="rgba(0,0,0,0.8)";ctx.shadowBlur=4;
   ctx.fillText("X:"+player.x.toFixed(1)+" Y:"+player.y.toFixed(1),innerWidth-10,72);ctx.shadowBlur=0;ctx.restore();
   ctx.save();ctx.globalAlpha=1;ctx.fillStyle="#fff";ctx.font="bold 13px system-ui";ctx.textAlign="right";ctx.textBaseline="top";ctx.shadowColor="rgba(0,0,0,0.8)";ctx.shadowBlur=4;
