@@ -435,15 +435,7 @@ function updateHUD(){
   var w=Math.abs((tempgauge/10)*50);
   tf.style.background=tempColor(tempgauge);
   if(tempgauge>=0){tf.style.left="50%";tf.style.width=w+"%";}
-  else{tf.style.left=(50-w)+"%";tf.style.width=w+"%"
-var statusEl=document.getElementById("statusText");
-if(!statusEl){
-  statusEl=document.createElement("div");
-  statusEl.id="statusText";
-  statusEl.style.cssText="font-size:11px;color:rgba(183,247,218,0.55);font-weight:bold;margin-top:4px";
-  document.getElementById("hud").appendChild(statusEl);
-}
-statusEl.textContent=timeOfDay+" | "+getSeason()+" | "+(isNaN(tempgauge)?DEF_TEMP:tempgauge)+"°";;}
+  else{tf.style.left=(50-w)+"%";tf.style.width=w+"%";}
 }
 dlog("HUD OK");
 // CHUNK 11: CONFIRM + WIRE BTN
